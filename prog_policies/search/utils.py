@@ -1,3 +1,4 @@
+from __future__ import annotations
 from prog_policies.base import BaseTask, dsl_nodes
 
 def evaluate_program(program: dsl_nodes.Program, task_envs: list[BaseTask],

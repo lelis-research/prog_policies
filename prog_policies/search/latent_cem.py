@@ -1,7 +1,6 @@
 from __future__ import annotations
 from functools import partial
 from multiprocessing import Pool
-import os
 import time
 import torch
 
@@ -57,7 +56,7 @@ class LatentCEM:
         
     def execute_population(self, population: torch.Tensor) -> tuple[list[str], torch.Tensor, int]:
         """Runs the given population in the environment and returns a list of mean rewards, after
-        `Config.search_number_executions` executions.
+        `self.number_executions` executions.
 
         Args:
             population (torch.Tensor): Current population as a tensor.
