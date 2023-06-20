@@ -8,18 +8,22 @@ search_default_fields = ['time', 'num_evaluations', 'best_reward', 'best_program
 
 class OutputHandler:
     
-    def __init__(self, experiment_name: str):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.output_folder = os.path.join('output', experiment_name, timestamp)
+    def __init__(self, experiment_name: str, log_filename: str = None):
+        if log_filename is None:
+            log_filename = experiment_name
+        self.output_folder = os.path.join('output', experiment_name)
         os.makedirs(self.output_folder, exist_ok=True)
         
         self.trainer_folder = os.path.join(self.output_folder, 'trainer')
         self.model_folder = os.path.join(self.output_folder, 'model')
         self.search_folder = os.path.join(self.output_folder, 'search')
+        log_folder = os.path.join(self.output_folder, 'log')
+        os.makedirs(log_folder, exist_ok=True)
         
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_handlers = [
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler(os.path.join(self.output_folder, 'stdout.txt'), mode='w')
+            logging.FileHandler(os.path.join(log_folder, f'{log_filename}_{timestamp}.txt'), mode='w')
         ]
         
         logging.basicConfig(handlers=log_handlers, format='%(asctime)s: %(message)s', level=logging.INFO)
@@ -60,8 +64,10 @@ class OutputHandler:
         params_path = os.path.join(self.model_folder, f'{model_name}.ptp')
         torch.save(model.state_dict(), params_path)
     
-    def setup_search_info(self, fname: str, extra_fields: list = []):
-        self.search_file = os.path.join(self.search_folder, f'{fname}.csv')
+    def setup_search_info(self, search_seed: int, task_name: str, extra_fields: list = []):
+        folder = os.path.join(self.search_folder, task_name)
+        os.makedirs(folder, exist_ok=True)
+        self.search_file = os.path.join(folder, f'seed_{search_seed}.csv')
         with open(self.search_file, mode='w') as f:
             f.write(",".join(search_default_fields + extra_fields))
             f.write("\n")

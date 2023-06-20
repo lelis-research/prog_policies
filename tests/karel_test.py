@@ -98,7 +98,7 @@ class TestKarelEnvironment(unittest.TestCase):
         }
         task = karel_tasks.StairClimber(seed=0, env_args=env_args)
         crash_reward = task.evaluate_program(prog_that_crashes)
-        self.assertLess(crash_reward, -99.)
+        self.assertLess(crash_reward, 0.)
         gt_prog = dsl.parse_str_to_node((
             'DEF run m( '
                 'WHILE c( noMarkersPresent c) w( '

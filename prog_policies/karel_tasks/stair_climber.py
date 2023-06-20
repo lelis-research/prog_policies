@@ -1,12 +1,13 @@
 import numpy as np
 
-from prog_policies.karel import KarelEnvironment, KarelTask
+from prog_policies.base import BaseTask
+from prog_policies.karel import KarelEnvironment
 
-class StairClimber(KarelTask):
+class StairClimber(BaseTask):
     
-    def generate_initial_environment(self):
+    def generate_initial_environment(self, env_args):
         
-        reference_env = KarelEnvironment(**self.env_args)
+        reference_env = KarelEnvironment(**env_args)
         
         env_height = reference_env.state_shape[1]
         env_width = reference_env.state_shape[2]
@@ -50,7 +51,7 @@ class StairClimber(KarelTask):
         self.initial_distance = abs(self.initial_position[0] - self.marker_position[0]) \
             + abs(self.initial_position[1] - self.marker_position[1])
         
-        return KarelEnvironment(initial_state=state, **self.env_args)
+        return KarelEnvironment(initial_state=state, **env_args)
     
     def reset_environment(self):
         super().reset_environment()
@@ -58,7 +59,7 @@ class StairClimber(KarelTask):
         
     def get_reward(self, env: KarelEnvironment):
         terminated = False
-        reward = 0
+        reward = 0.
 
         karel_pos = env.get_hero_pos()
         
@@ -84,12 +85,12 @@ class StairClimberSparse(StairClimber):
     
     def get_reward(self, env: KarelEnvironment):
         terminated = False
-        reward = 0
+        reward = 0.
 
         karel_pos = env.get_hero_pos()
         
         if karel_pos[0] == self.marker_position[0] and karel_pos[1] == self.marker_position[1]:
-            reward = 1
+            reward = 1.
             terminated = True
         elif [karel_pos[0], karel_pos[1]] not in self.valid_positions:
             reward = self.crash_penalty

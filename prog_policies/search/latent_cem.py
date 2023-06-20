@@ -14,7 +14,7 @@ class LatentCEM:
     """Implements the CEM method from LEAPS paper.
     """
     def __init__(self, model: BaseVAE, task_cls: type[BaseTask], dsl: BaseDSL,
-                 population_size: int = 32, elitism_rate: float = 0.1,
+                 env_args: dict, population_size: int = 32, elitism_rate: float = 0.1,
                  number_executions: int = 16, number_iterations: int = 1000,
                  restart_timeout: int = 10, sigma: float = 0.1, reduce_to_mean: bool = False,
                  output_handler: OutputHandler = None, multiprocessing: bool = False):
@@ -28,10 +28,12 @@ class LatentCEM:
         self.number_iterations = number_iterations
         self.reduce_to_mean = reduce_to_mean
         self.sigma = sigma
-        self.task_envs = [task_cls(i) for i in range(self.number_executions)]
+        self.task_envs = [task_cls(env_args, i) for i in range(self.number_executions)]
         self.restart_timeout = restart_timeout
         self.output_handler = output_handler
         self.multiprocessing = multiprocessing
+        if self.output_handler is not None:
+            self.output_handler.setup_search()
 
     def _log(self, message: str):
         if self.output_handler is not None:
@@ -55,35 +57,21 @@ class LatentCEM:
         
         
     def execute_population(self, population: torch.Tensor) -> tuple[list[str], torch.Tensor, int]:
-        """Runs the given population in the environment and returns a list of mean rewards, after
-        `self.number_executions` executions.
-
-        Args:
-            population (torch.Tensor): Current population as a tensor.
-
-        Returns:
-            tuple[list[str], int, torch.Tensor]: List of programs as strings, list of mean rewards
-            as tensor and number of evaluations as int.
-        """
         programs_tokens = self.model.decode_vector(population)
         programs_str = [self.dsl.parse_int_to_str(prog_tokens) for prog_tokens in programs_tokens]
-        programs_nodes = [self.dsl.parse_str_to_node(prog_str) for prog_str in programs_str]
         
         if self.multiprocessing:
             with Pool() as pool:
-                fn = partial(evaluate_program, task_envs=self.task_envs, best_reward=self.best_reward)
-                results = pool.map(fn, programs_nodes)
+                fn = partial(evaluate_program, dsl=self.dsl, task_envs=self.task_envs)
+                rewards = pool.map(fn, programs_str)
         else:
-            results = [evaluate_program(p, self.task_envs, self.best_reward) for p in programs_nodes]
+            rewards = [evaluate_program(p, self.dsl, self.task_envs) for p in programs_str]
         
-        rewards = []
-        for p, num_eval, r in results:
-            program_str = self.dsl.parse_node_to_str(p)
-            rewards.append(r)
-            self.num_evaluations += num_eval
+        for r, prog_str in zip(rewards, programs_str):
+            self.num_evaluations += 1
             if r > self.best_reward:
                 self.best_reward = r
-                self.best_program = program_str
+                self.best_program = prog_str
                 self._log(f'New best reward: {self.best_reward}')
                 self._log(f'New best program: {self.best_program}')
                 self._log(f'Number of evaluations: {self.num_evaluations}')
@@ -97,13 +85,6 @@ class LatentCEM:
 
     
     def search(self) -> tuple[str, bool, int]:
-        """Main search method. Searches for a program using the specified DSL that yields the
-        highest reward at the specified task.
-
-        Returns:
-            tuple[str, bool]: Best program in string format and a boolean value indicating
-            if the search has converged.
-        """
         population = self.init_population()
         self.converged = False
         self.num_evaluations = 0
@@ -113,7 +94,7 @@ class LatentCEM:
         prev_mean_elite_reward = -float('inf')
         self.start_time = time.time()
         if self.output_handler is not None:
-            self.output_handler.setup_search()
+            self.output_handler.setup_search_info('latent_cem')
 
         for iteration in range(1, self.number_iterations + 1):
             rewards = self.execute_population(population)

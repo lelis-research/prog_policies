@@ -1,14 +1,22 @@
 from __future__ import annotations
+from typing import Union
 from abc import ABC, abstractmethod
 import copy
+
+import numpy as np
 
 from .environment import BaseEnvironment
 from . import dsl_nodes
 
 class BaseTask(ABC):
     
-    def __init__(self):
-        self.initial_environment = self.generate_initial_environment()
+    def __init__(self, env_args: dict = {}, seed: Union[int, None] = None):
+        if seed is not None:
+            self.rng = np.random.RandomState(seed)
+        else:
+            self.rng = np.random.RandomState()
+        self.crash_penalty = -1.
+        self.initial_environment = self.generate_initial_environment(env_args)
         self.reset_environment()
     
     def get_environment(self) -> BaseEnvironment:
@@ -18,7 +26,7 @@ class BaseTask(ABC):
         self.environment = copy.deepcopy(self.initial_environment)
     
     @abstractmethod
-    def generate_initial_environment(self) -> BaseEnvironment:
+    def generate_initial_environment(self, env_args: dict) -> BaseEnvironment:
         pass
     
     @abstractmethod

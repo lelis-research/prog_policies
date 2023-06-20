@@ -1,12 +1,18 @@
 from __future__ import annotations
-from prog_policies.base import BaseTask, dsl_nodes
+from typing import Union
 
-def evaluate_program(program: dsl_nodes.Program, task_envs: list[BaseTask],
-                     best_reward: float = None) -> float:
-    mean_reward = 0.
-    for task_env in task_envs:
-        reward = task_env.evaluate_program(program)
-        if reward < best_reward:
+from prog_policies.base import BaseTask, BaseDSL, dsl_nodes
+
+def evaluate_program(program: Union[str, dsl_nodes.Program], dsl: BaseDSL,
+                     task_envs: list[BaseTask]) -> float:
+    if isinstance(program, str):
+        try:
+            program = dsl.parse_str_to_node(program)
+        except AssertionError: # In case of invalid program (e.g. does not have an ending token)
             return -float('inf')
-        mean_reward += reward
-    return mean_reward / len(task_envs)
+    
+    sum_reward = 0.
+    for task_env in task_envs:
+        sum_reward += task_env.evaluate_program(program)
+    
+    return sum_reward / len(task_envs)

@@ -5,6 +5,7 @@ def parse_args():
     
     parser.add_argument('--disable_gpu', action='store_true', help='Disable GPU')
     parser.add_argument('--experiment_name', default='leaps_vae_test', help='Name of the experiment')
+    parser.add_argument('--log_filename', default='leaps_vae_debugging', help='Name of the log file')
     parser.add_argument('--multiprocessing_active', action='store_true', help='If set, search functions will use multiprocessing to evaluate programs')
 
     parser.add_argument('--model_name', default='LeapsVAE', help='Class name of the VAE model')
@@ -44,6 +45,7 @@ def parse_args():
     parser.add_argument('--search_number_executions', default=16, type=int, help='Number of environment executions for mean reward calculation')
     parser.add_argument('--search_number_iterations', default=1000, type=int, help='Maximum number of iterations of Latent Search')
     parser.add_argument('--search_restart_timeout', default=5, type=int, help='Maximum number of iterations without improvement before restart')
+    parser.add_argument('--search_seed', default=1, type=int, help='Seed for random search initialization')
     
     parser.add_argument('--trainer_num_epochs', default=150, type=int, help='Number of training epochs')
     parser.add_argument('--trainer_disable_prog_teacher_enforcing', action='store_true', help='If set, program sequence classification will not use teacher enforcing')

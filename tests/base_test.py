@@ -71,7 +71,7 @@ class MockEnvironment(base.BaseEnvironment):
 
 class MockTask1(base.BaseTask):
     
-    def generate_initial_environment(self):
+    def generate_initial_environment(self, env_args = {}):
         return MockEnvironment(np.array([0, 0]))
     
     def reset_environment(self):

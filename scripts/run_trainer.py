@@ -32,7 +32,8 @@ if __name__ == '__main__':
     dsl = KarelDSL()
     env = KarelEnvironment(**env_args)
     output = OutputHandler(
-        experiment_name=args.experiment_name
+        experiment_name=args.experiment_name,
+        log_filename=args.log_filename
     )
     model = LeapsVAE(dsl, env, device, **model_args)
     dataloader_params = {
