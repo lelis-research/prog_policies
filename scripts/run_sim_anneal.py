@@ -35,7 +35,6 @@ if __name__ == '__main__':
         'env_args': env_args,
         'number_executions': args.search_number_executions,
         'number_iterations': args.search_number_iterations,
-        'sigma': 0.5,
         'alpha': 0.9,
         'beta': 200,
         'seed': args.search_seed,
