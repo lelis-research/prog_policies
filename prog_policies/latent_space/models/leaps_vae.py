@@ -1,3 +1,4 @@
+from __future__ import annotations
 import torch
 import torch.nn as nn
 
@@ -9,10 +10,10 @@ from .base_vae import BaseVAE, ModelOutput
 class LeapsVAE(BaseVAE):
     """Reproduction of program VAE used in LEAPS paper.
     """    
-    def __init__(self, dsl: BaseDSL, env: BaseEnvironment, device: torch.device,
-                 max_program_length = 45, max_demo_length = 100, model_seed = 1,
+    def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
+                 env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
                  hidden_size = 256):
-        super().__init__(dsl, env, device, max_program_length, max_demo_length,
+        super().__init__(dsl, device, env_cls, env_args, max_program_length, max_demo_length,
                          model_seed, hidden_size)
         
         # Inputs: enc(rho_i) (T). Output: enc_state (Z). Hidden state: h_i: z = h_t (Z).
@@ -168,7 +169,7 @@ class LeapsVAE(BaseVAE):
                 current_action = a_h[:, :, i].view(batch_size*demos_per_program, 1)
             # Otherwise, step in actual environment to get next state
             else:
-                current_state = self.env_step(current_state, current_action)
+                current_state = self.env_step(current_action)
                 
             terminated_policy = torch.logical_or(current_action == self.num_agent_actions - 1,
                                                  terminated_policy)

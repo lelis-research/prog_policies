@@ -38,15 +38,9 @@ def parse_args():
     parser.add_argument('--env_enable_leaps_behaviour', action='store_true', help='If set, uses LEAPS version of Karel rules')
     parser.add_argument('--env_is_crashable', action='store_true', help='If set, program stops when Karel crashes')
     
-    parser.add_argument('--search_elitism_rate', default=0.125, type=float, help='Elitism rate for selection phase of Latent Search')
-    parser.add_argument('--search_population_size', default=256, type=int, help='Population size for growth phase of Latent Search')
-    parser.add_argument('--search_reduce_to_mean', action='store_true', help='If set, elite population is reduced to mean in each iteration')
-    parser.add_argument('--search_sigma', default=0.2, type=float, help='Size of noise in growth phase of Latent Search')
-    parser.add_argument('--search_number_executions', default=16, type=int, help='Number of environment executions for mean reward calculation')
-    parser.add_argument('--search_number_iterations', default=1000, type=int, help='Maximum number of iterations of Latent Search')
-    parser.add_argument('--search_restart_timeout', default=5, type=int, help='Maximum number of iterations without improvement before restart')
-    parser.add_argument('--search_seed', default=1, type=int, help='Seed for random search initialization')
-    
+    parser.add_argument('--search_method', default='LatentCEM', help='Name of search method class')
+    parser.add_argument('--search_args_path', default='sample_args/search/latent_cem.json', help='Arguments path for search method')
+
     parser.add_argument('--trainer_num_epochs', default=150, type=int, help='Number of training epochs')
     parser.add_argument('--trainer_disable_prog_teacher_enforcing', action='store_true', help='If set, program sequence classification will not use teacher enforcing')
     parser.add_argument('--trainer_disable_a_h_teacher_enforcing', action='store_true', help='If set, actions sequence classification will not use teacher enforcing')

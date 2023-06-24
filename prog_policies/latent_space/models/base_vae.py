@@ -22,13 +22,16 @@ class BaseVAE(nn.Module):
     """Base class for all program VAEs. Implements general functions used by subclasses.
     Do not directly instantiate this class.
     """    
-    def __init__(self, dsl: BaseDSL, env: BaseEnvironment, device: torch.device,
-                 max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256):
+    def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
+                 env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
+                 hidden_size = 256, model_params_path: str = None):
         super().__init__()
         
         torch.manual_seed(model_seed)
-        
+
+        self.env_cls = env_cls
+        self.env_args = env_args
+
         self.device = device
         
         self.max_demo_length = max_demo_length
@@ -49,6 +52,7 @@ class BaseVAE(nn.Module):
                                     constant_(x, 0), nn.init.calculate_gain('relu'))
         
         # CxHxW
+        env = self.env_cls(**self.env_args)
         self.state_shape = env.state_shape
         
         # Input: s_i (CxHxW). Output: enc(s_i) (Z).
@@ -74,6 +78,11 @@ class BaseVAE(nn.Module):
         # syntax_checker_tokens.append('<pad>')
         # self.T2I = {token: i for i, token in enumerate(syntax_checker_tokens)}
         self.syntax_checker = SyntaxChecker(dsl, self.device)
+        
+        self.to(self.device)
+        
+        if model_params_path is not None:
+            self.load_state_dict(torch.load(model_params_path, map_location=self.device))
 
     def env_init(self, states: torch.Tensor):
         states_np = states.detach().cpu().numpy().astype(np.bool_)
@@ -81,8 +90,8 @@ class BaseVAE(nn.Module):
         # states_np = np.moveaxis(states_np,[-1,-2,-3], [-2,-3,-1])
         self._envs = EnvironmentBatch(states_np)
 
-    def env_step(self, states: torch.Tensor, actions: torch.Tensor):
-        states_np = states.detach().cpu().numpy().astype(np.bool_)
+    def env_step(self, actions: torch.Tensor):
+        # states_np = states.detach().cpu().numpy().astype(np.bool_)
         # C x H x W to H x W x C
         # states_np = np.moveaxis(states_np,[-1,-2,-3], [-2,-3,-1])
         # assert states_np.shape[-1] == 16

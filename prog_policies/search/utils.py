@@ -8,7 +8,7 @@ def evaluate_program(program: Union[str, dsl_nodes.Program], dsl: BaseDSL,
     if isinstance(program, str):
         try:
             program = dsl.parse_str_to_node(program)
-        except AssertionError: # In case of invalid program (e.g. does not have an ending token)
+        except Exception: # In case of invalid program (e.g. does not have an ending token)
             return -float('inf')
     
     sum_reward = 0.

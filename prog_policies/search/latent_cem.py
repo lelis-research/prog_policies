@@ -1,67 +1,65 @@
 from __future__ import annotations
 from functools import partial
 from multiprocessing import Pool
-import time
+
 import torch
 
 from prog_policies.base import BaseDSL, BaseTask, dsl_nodes
 from prog_policies.latent_space.models import BaseVAE
 from prog_policies.output_handler import OutputHandler
 
+from .base_search import BaseSearch
 from .utils import evaluate_program
 
-class LatentCEM:
+class LatentCEM(BaseSearch):
     """Implements the CEM method from LEAPS paper.
     """
-    def __init__(self, model: BaseVAE, task_cls: type[BaseTask], dsl: BaseDSL,
-                 env_args: dict, population_size: int = 32, elitism_rate: float = 0.1,
-                 number_executions: int = 16, number_iterations: int = 1000,
-                 restart_timeout: int = 10, sigma: float = 0.1, reduce_to_mean: bool = False,
-                 output_handler: OutputHandler = None, multiprocessing: bool = False):
-        self.model = model
-        self.dsl = dsl
-        self.device = self.model.device
-        self.population_size = population_size
-        self.elitism_rate = elitism_rate
-        self.n_elite = int(elitism_rate * self.population_size)
-        self.number_executions = number_executions
-        self.number_iterations = number_iterations
-        self.reduce_to_mean = reduce_to_mean
-        self.sigma = sigma
-        self.task_envs = [task_cls(env_args, i) for i in range(self.number_executions)]
-        self.restart_timeout = restart_timeout
-        self.output_handler = output_handler
-        self.multiprocessing = multiprocessing
-        if self.output_handler is not None:
-            self.output_handler.setup_search()
-
-    def _log(self, message: str):
-        if self.output_handler is not None:
-            self.output_handler.log('Latent CEM', message)
-
-    def _save_best(self):
-        if self.output_handler is not None:
-            t = time.time() - self.start_time
-            self.output_handler.save_search_info(t, self.num_evaluations, self.best_reward,
-                                                    self.best_program)
-
+    def parse_method_args(self, search_method_args: dict):
+        self.population_size = search_method_args.get('population_size', 32)
+        self.elitism_rate = search_method_args.get('elitism_rate', 0.1)
+        self.restart_timeout = search_method_args.get('restart_timeout', 10)
+        self.initial_sigma = search_method_args.get('initial_sigma', 0.1)
+        self.reduce_to_mean = search_method_args.get('reduce_to_mean', False)
+    
+    def init_search_vars(self):
+        self.sigma = self.initial_sigma
+        self.counter_for_restart = 0
+        self.best_mean_elite_reward_since_restart = -float('inf')
+        self.population = self.init_population()
+        self.converged = False
+        
+    def get_search_vars(self) -> dict:
+        return {
+            'sigma': self.sigma,
+            'counter_for_restart': self.counter_for_restart,
+            'best_mean_elite_reward_since_restart': self.best_mean_elite_reward_since_restart,
+            'population': self.population,
+            'converged': self.converged
+        }
+        
+    def set_search_vars(self, search_vars: dict):
+        self.sigma = search_vars.get('sigma')
+        self.counter_for_restart = search_vars.get('counter_for_restart')
+        self.best_mean_elite_reward_since_restart = search_vars.get('best_mean_elite_reward_since_restart')
+        self.population = search_vars.get('population')
+        self.converged = search_vars.get('converged')
+    
     def init_population(self) -> torch.Tensor:
         """Initializes the CEM population from a normal distribution.
 
         Returns:
             torch.Tensor: Initial population as a tensor.
         """
-        return torch.stack([
-            torch.randn(self.model.hidden_size, device=self.device) for _ in range(self.population_size)
-        ])
+        return torch.randn(self.population_size, self.latent_model.hidden_size,
+                           generator=self.torch_rng, device=self.torch_device)
         
         
     def execute_population(self, population: torch.Tensor) -> tuple[list[str], torch.Tensor, int]:
-        programs_tokens = self.model.decode_vector(population)
+        programs_tokens = self.latent_model.decode_vector(population)
         programs_str = [self.dsl.parse_int_to_str(prog_tokens) for prog_tokens in programs_tokens]
         
-        if self.multiprocessing:
-            with Pool() as pool:
+        if self.n_proc > 1:
+            with Pool(self.n_proc) as pool:
                 fn = partial(evaluate_program, dsl=self.dsl, task_envs=self.task_envs)
                 rewards = pool.map(fn, programs_str)
         else:
@@ -72,68 +70,49 @@ class LatentCEM:
             if r > self.best_reward:
                 self.best_reward = r
                 self.best_program = prog_str
-                self._log(f'New best reward: {self.best_reward}')
-                self._log(f'New best program: {self.best_program}')
-                self._log(f'Number of evaluations: {self.num_evaluations}')
-                self._save_best()
+                self.save_best()
                 
             if self.best_reward >= 1.0:
                 self.converged = True
-                break                
-        
-        return torch.tensor(rewards, device=self.device)
-
-    
-    def search(self) -> tuple[str, bool, int]:
-        population = self.init_population()
-        self.converged = False
-        self.num_evaluations = 0
-        counter_for_restart = 0
-        self.best_reward = -float('inf')
-        self.best_program = None
-        prev_mean_elite_reward = -float('inf')
-        self.start_time = time.time()
-        if self.output_handler is not None:
-            self.output_handler.setup_search_info('latent_cem')
-
-        for iteration in range(1, self.number_iterations + 1):
-            rewards = self.execute_population(population)
-            
-            if self.converged:
                 break
-            
-            best_indices = torch.topk(rewards, self.n_elite).indices
-            elite_population = population[best_indices]
-            mean_elite_reward = torch.mean(rewards[best_indices])
+        
+        return torch.tensor(rewards, device=self.torch_device)
 
-            self._log(f'Iteration {iteration} mean elite reward: {mean_elite_reward}')
-            
-            if mean_elite_reward.cpu().numpy() == prev_mean_elite_reward:
-                counter_for_restart += 1
-            else:
-                counter_for_restart = 0
-            if counter_for_restart >= self.restart_timeout and self.restart_timeout > 0:
-                population = self.init_population()
-                counter_for_restart = 0
-                self._log('Restarted population.')
-            else:
-                new_indices = torch.ones(elite_population.size(0), device=self.device).multinomial(
-                    self.population_size, replacement=True)
-                if self.reduce_to_mean:
-                    elite_population = torch.mean(elite_population, dim=0).repeat(self.n_elite, 1)
-                new_population = []
-                for index in new_indices:
-                    sample = elite_population[index]
-                    new_population.append(
-                        sample + self.sigma * torch.randn_like(sample, device=self.device)
-                    )
-                population = torch.stack(new_population)
-            prev_mean_elite_reward = mean_elite_reward.cpu().numpy()
+    def search_iteration(self):
+        rewards = self.execute_population(self.population)
         
-        if not self.converged:
-            if self.output_handler is not None:
-                t = time.time() - self.start_time
-                self.output_handler.save_search_info(t, self.num_evaluations, self.best_reward,
-                                                     self.best_program)
+        if self.converged:
+            return
         
-        return self.best_program, self.converged, self.num_evaluations
+        n_elite = int(self.population_size * self.elitism_rate)
+        best_indices = torch.topk(rewards, n_elite).indices
+        elite_population = self.population[best_indices]
+        mean_elite_reward = torch.mean(rewards[best_indices])
+        std_elite_reward = torch.std(rewards[best_indices])
+
+        self.log(f'Iteration {self.current_iteration} elite reward mean: {mean_elite_reward}, std: {std_elite_reward}')
+        
+        if mean_elite_reward.cpu().numpy() <= self.best_mean_elite_reward_since_restart:
+            self.counter_for_restart += 1
+        else:
+            self.counter_for_restart = 0
+            self.best_mean_elite_reward_since_restart = mean_elite_reward.cpu().numpy()
+        
+        if self.counter_for_restart >= self.restart_timeout and self.restart_timeout > 0:
+            self.init_search_vars()
+            self.log('Restarted population.')
+        else:
+            new_indices = torch.ones(elite_population.size(0), device=self.torch_device).multinomial(
+                self.population_size, generator=self.torch_rng, replacement=True)
+            if self.reduce_to_mean:
+                elite_population = torch.mean(elite_population, dim=0).repeat(n_elite, 1)
+                self.sigma = torch.std(elite_population)
+            new_population = []
+            for index in new_indices:
+                sample = elite_population[index]
+                new_population.append(
+                    sample + self.sigma * torch.randn(self.latent_model.hidden_size,
+                                                      generator=self.torch_rng,
+                                                      device=self.torch_device)
+                )
+            self.population = torch.stack(new_population)

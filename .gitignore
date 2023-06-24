@@ -1,6 +1,5 @@
 __pycache__
 env
-output/**/*.csv
-output/**/*.ptp
-output/**/stdout.txt
+output
+checkpoints
 data/*.pkl

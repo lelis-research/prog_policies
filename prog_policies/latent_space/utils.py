@@ -7,15 +7,16 @@ from prog_policies.base import BaseEnvironment
 
 class EnvironmentBatch:
     
-    def __init__(self, states: np.ndarray, params: dict[str, float]):
+    def __init__(self, states: np.ndarray, env_cls: type[BaseEnvironment],
+                 env_args: dict):
         self.envs: list[BaseEnvironment] = []
         for s in states:
-            self.envs.append(BaseEnvironment(initial_state=s, **params))
+            self.envs.append(env_cls(initial_state=s, **env_args))
 
     def step(self, actions):
         assert len(self.envs) == len(actions)
         for env, action_index in zip(self.envs, actions):
-            if action_index < 5: # Action 5 is the "do nothing" action, for filling up empty space in the array
+            if action_index < len(env.actions): # Action 5 is the "do nothing" action, for filling up empty space in the array
                 env.run_action_index(action_index)
         return np.array([env.get_state() for env in self.envs])
 

@@ -1,0 +1,34 @@
+{
+    "task_cls_name": "StairClimberSparse",
+    "env_args": {
+        "env_height": 8,
+        "env_width": 8,
+        "crashable": true,
+        "leaps_behaviour": false,
+        "max_calls": 10000
+    },
+    "exp_name": "search_debug",
+    "search_method_args": {
+        "initial_temperature": 100,
+        "alpha": 0.9,
+        "beta": 200,
+        "cem_pop_size": 32,
+        "cem_elitism": 0.125,
+        "cem_iterations": 5,
+        "cem_sigma": 1.0
+    },
+    "max_evaluations": 1e7,
+    "latent_model_cls_name": "LeapsVAE",
+    "latent_model_args": {
+        "hidden_size": 128,
+        "max_demo_length": 20,
+        "max_program_length": 45
+    },
+    "latent_model_params_path": "params/leaps_vae_128.ptp",
+    "number_executions": 16,
+    "search_seed": 1,
+    "checkpoint_frequency": 25,
+    "n_proc": 4,
+    "base_output_folder": "output",
+    "base_checkpoint_folder": "checkpoints"
+}
