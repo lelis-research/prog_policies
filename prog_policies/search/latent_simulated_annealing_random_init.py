@@ -6,37 +6,11 @@ import torch
 
 from prog_policies.base import dsl_nodes
 
-from .simulated_annealing import SimulatedAnnealing
+from .latent_simulated_annealing import LatentSimulatedAnnealing
 from .utils import evaluate_program
 
-class LatentSimulatedAnnealing(SimulatedAnnealing):
-    
-    def parse_method_args(self, search_method_args: dict):
-        super().parse_method_args(search_method_args)
-        self.cem_sigma = search_method_args.get('cem_sigma', 0.25)
-        self.cem_pop_size = search_method_args.get('cem_pop_size', 32)
-        self.cem_elitism = search_method_args.get('cem_elitism', 0.1)
-        self.cem_iterations = search_method_args.get('cem_iterations', 10)
-        
-    def random_program(self) -> dsl_nodes.Program:
-        latent = torch.randn(1, self.latent_model.hidden_size, generator=self.torch_rng,
-                             device=self.torch_device)
-        program_tokens = self.latent_model.decode_vector(latent)[0]
-        return self.dsl.parse_int_to_node(program_tokens)
-    
-    def find_and_cut(self, node: dsl_nodes.BaseNode, index_to_mutate: int) -> str:
-        for i, child_type in enumerate(node.children_types):
-            if index_to_mutate == self.current_index:
-                if child_type == dsl_nodes.StatementNode:
-                    current_child_str = self.dsl.parse_node_to_str(node.children[i])
-                    node.children[i] = None
-                    return current_child_str
-                else:
-                    return None
-            else:
-                self.current_index += 1
-                return self.find_and_cut(node.children[i], index_to_mutate)
-    
+class LatentSimulatedAnnealingRandomInit(LatentSimulatedAnnealing):
+
     def mutate_current_program(self) -> dsl_nodes.Program:
         copy_program = copy.deepcopy(self.current_program)
         
@@ -51,16 +25,16 @@ class LatentSimulatedAnnealing(SimulatedAnnealing):
         # At this point, `copy_program` has a hole in the branch `index`
         prog_with_hole = self.dsl.parse_node_to_str(copy_program)
         
-        branch_program_tokens = self.dsl.parse_str_to_int(branch_program_str)
-        branch_program_tokens = [self.dsl.t2i['DEF'], self.dsl.t2i['run'], self.dsl.t2i['m(']] + branch_program_tokens + [self.dsl.t2i['m)']]
-        branch_program_tensor = torch.tensor(branch_program_tokens, dtype=torch.long, device=self.torch_device)
-        starting_latent = self.latent_model.encode_program(branch_program_tensor).detach().repeat(self.cem_pop_size, 1)
+        # branch_program_tokens = self.dsl.parse_str_to_int(branch_program_str)
+        # branch_program_tokens = [self.dsl.t2i['DEF'], self.dsl.t2i['run'], self.dsl.t2i['m(']] + branch_program_tokens + [self.dsl.t2i['m)']]
+        # branch_program_tensor = torch.tensor(branch_program_tokens, dtype=torch.long, device=self.torch_device)
+        starting_latent = torch.randn(self.cem_pop_size, self.latent_model.hidden_size,
+                                      generator=self.torch_rng, device=self.torch_device)
         best_mutation_so_far = self.current_program
         best_reward_so_far = self.current_reward
         
         # CEM to fill the hole
-        population = starting_latent + self.cem_sigma * torch.randn(self.cem_pop_size, self.latent_model.hidden_size,
-                                                                    generator=self.torch_rng, device=self.torch_device)
+        population = starting_latent
         
         for cem_iter in range(1, self.cem_iterations + 1):
             population_tokens = self.latent_model.decode_vector(population)
