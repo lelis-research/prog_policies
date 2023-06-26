@@ -71,12 +71,17 @@ class Snake(BaseTask):
                         env.state[5, ym, xm] = False
                         self.marker_position = [ym, xm]
             
-        if (agent_y, agent_x) not in self.body_list:
-            last_y, last_x = self.body_list[-1]
-            env.state[4, last_y, last_x] = True
+        last_y, last_x = self.body_list[-1]
+        if (agent_y, agent_x) in self.body_list[:-1]:
+            terminated = True
+            reward = self.crash_penalty
+        elif agent_y != last_y or agent_x != last_x:
+            env.state[6, last_y, last_x] = True
+            env.state[5, last_y, last_x] = False
             self.body_list.append((agent_y, agent_x))
             if len(self.body_list) > self.body_size:
                 first_y, first_x = self.body_list.pop(0)
-                env.state[4, first_y, first_x] = False
+                env.state[6, first_y, first_x] = False
+                env.state[5, first_y, first_x] = True
         
         return terminated, reward
