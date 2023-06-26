@@ -63,10 +63,6 @@ class LatentSimulatedAnnealing(SimulatedAnnealing):
         population = starting_latent + self.cem_sigma * torch.randn(self.cem_pop_size, self.latent_model.hidden_size,
                                                                     generator=self.torch_rng, device=self.torch_device)
         
-        pool = None
-        if self.n_proc > 1:
-            pool = Pool(self.n_proc)
-        
         for cem_iter in range(1, self.cem_iterations + 1):
             population_tokens = self.latent_model.decode_vector(population)
             population_str = [self.dsl.parse_int_to_str(prog_tokens[3:-1]) for prog_tokens in population_tokens]
@@ -76,9 +72,9 @@ class LatentSimulatedAnnealing(SimulatedAnnealing):
             # num_unique_programs = len(set(full_programs_str))
             # self.log(f'CEM iteration {cem_iter}: {num_unique_programs} unique programs')
             
-            if pool is not None:
+            if self.pool is not None:
                 fn = partial(evaluate_program, dsl=self.dsl, task_envs=self.task_envs)
-                rewards = pool.map(fn, full_programs_str)
+                rewards = self.pool.map(fn, full_programs_str)
             else:
                 rewards = [evaluate_program(p, self.dsl, self.task_envs) for p in full_programs_str]
             
@@ -93,9 +89,6 @@ class LatentSimulatedAnnealing(SimulatedAnnealing):
                     self.save_best()
                     
                 if self.best_reward >= 1.0:
-                    if pool is not None:
-                        pool.close()
-                        pool.join()
                     return self.dsl.parse_str_to_node(prog_str)
                 
             n_elite = int(self.cem_elitism * self.cem_pop_size)
@@ -113,9 +106,5 @@ class LatentSimulatedAnnealing(SimulatedAnnealing):
                                                           device=self.torch_device)
                 )
             population = torch.stack(new_population)
-        
-        if pool is not None:
-            pool.close()
-            pool.join()
         
         return best_mutation_so_far

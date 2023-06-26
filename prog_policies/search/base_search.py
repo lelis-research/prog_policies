@@ -5,6 +5,7 @@ import json
 import os
 import pickle
 from logging import Logger
+from multiprocessing import Pool
 
 import numpy as np
 import torch
@@ -123,6 +124,9 @@ class BaseSearch(ABC):
         else:
             self.init_output()
         
+        if self.n_proc > 1:
+            self.pool = Pool(self.n_proc)
+        
         # Main search loop, assumes search can be separated into iterations following search_iteration
         while self.num_evaluations < self.max_evaluations:
             self.search_iteration()
@@ -139,6 +143,10 @@ class BaseSearch(ABC):
             if self.best_reward >= 1.:
                 break
             self.current_iteration += 1
+        
+        if self.pool is not None:
+            self.pool.close()
+            self.pool.join()
         
         # When search finishes, remove all checkpoints
         all_checkpoints = glob(os.path.join(self.checkpoint_folder, f'seed_{self.search_seed}_iter_*.pkl'))
