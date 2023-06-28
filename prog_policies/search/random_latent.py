@@ -1,12 +1,7 @@
 from __future__ import annotations
 from functools import partial
-from multiprocessing import Pool
 
 import torch
-
-from prog_policies.base import BaseDSL, BaseTask, dsl_nodes
-from prog_policies.latent_space.models import BaseVAE
-from prog_policies.output_handler import OutputHandler
 
 from .base_search import BaseSearch
 from .utils import evaluate_program
@@ -47,10 +42,9 @@ class RandomLatent(BaseSearch):
         programs_tokens = self.latent_model.decode_vector(population)
         programs_str = [self.dsl.parse_int_to_str(prog_tokens) for prog_tokens in programs_tokens]
         
-        if self.n_proc > 1:
-            with Pool(self.n_proc) as pool:
-                fn = partial(evaluate_program, dsl=self.dsl, task_envs=self.task_envs)
-                rewards = pool.map(fn, programs_str)
+        if self.pool is not None:
+            fn = partial(evaluate_program, dsl=self.dsl, task_envs=self.task_envs)
+            rewards = self.pool.map(fn, programs_str)
         else:
             rewards = [evaluate_program(p, self.dsl, self.task_envs) for p in programs_str]
         
