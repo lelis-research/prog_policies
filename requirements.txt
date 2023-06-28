@@ -1,7 +1,6 @@
-torch==1.13.1
+torch==1.10.0
 Pillow
 matplotlib
-h5py
 numpy
 pandas
 tqdm
