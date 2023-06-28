@@ -24,7 +24,7 @@ class BaseSearch(ABC):
                  latent_model_params_path: str = None, search_seed: int = 1,
                  checkpoint_frequency: int = 100, base_output_folder: str = 'output',
                  base_checkpoint_folder: str = 'checkpoints', logger: Logger = None,
-                 n_proc: int = 1):
+                 n_proc: int = 1, only_continue_from_checkpoint: bool = False):
         self.dsl = dsl
         task_cls = get_task_cls(task_cls_name)
         self.task_envs = [task_cls(env_args, i) for i in range(number_executions)]
@@ -61,6 +61,7 @@ class BaseSearch(ABC):
         self.checkpoint_frequency = checkpoint_frequency
         self.logger = logger
         self.n_proc = n_proc
+        self.only_continue_from_checkpoint = only_continue_from_checkpoint
     
     @abstractmethod
     def parse_method_args(self, search_method_args: dict):
@@ -122,6 +123,8 @@ class BaseSearch(ABC):
             self.log(f'Loaded checkpoint {checkpoint}')
             self.current_iteration += 1
         else:
+            if self.only_continue_from_checkpoint:
+                return '', -np.inf, 0
             self.init_output()
         
         if self.n_proc > 1:
