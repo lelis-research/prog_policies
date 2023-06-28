@@ -129,6 +129,8 @@ class BaseSearch(ABC):
         
         if self.n_proc > 1:
             self.pool = Pool(self.n_proc)
+        else:
+            self.pool = None
         
         # Main search loop, assumes search can be separated into iterations following search_iteration
         while self.num_evaluations < self.max_evaluations:
@@ -155,7 +157,7 @@ class BaseSearch(ABC):
         all_checkpoints = glob(os.path.join(self.checkpoint_folder, f'seed_{self.search_seed}_iter_*.pkl'))
         for checkpoint in all_checkpoints:
             os.remove(checkpoint)
-            
+
         # Touch a file to indicate search is finished
         open(os.path.join(self.checkpoint_folder, f'seed_{self.search_seed}_finished'), 'a').close()
         
