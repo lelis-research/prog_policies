@@ -153,6 +153,9 @@ class BaseSearch(ABC):
         for checkpoint in all_checkpoints:
             os.remove(checkpoint)
             
+        # Touch a file to indicate search is finished
+        open(os.path.join(self.checkpoint_folder, f'seed_{self.search_seed}_finished'), 'a').close()
+        
         # Save last seen program if not converged
         if self.best_reward < 1.:
             self.log('Search finished without finding a solution')
