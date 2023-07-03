@@ -49,6 +49,7 @@ class BaseSearch(ABC):
         os.makedirs(self.task_output_folder, exist_ok=True)
         os.makedirs(self.checkpoint_folder, exist_ok=True)
         self.max_evaluations = max_evaluations
+        self.n_proc = n_proc
         if latent_model_cls_name is not None:
             latent_model_args['device'] = device
             latent_model_args['dsl'] = dsl
@@ -61,7 +62,6 @@ class BaseSearch(ABC):
         self.torch_device = device
         self.checkpoint_frequency = checkpoint_frequency
         self.logger = logger
-        self.n_proc = n_proc
         self.only_continue_from_checkpoint = only_continue_from_checkpoint
     
     @abstractmethod
