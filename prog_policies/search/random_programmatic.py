@@ -60,6 +60,7 @@ class RandomProgrammatic(BaseSearch):
         
         program = self.random_program()
         reward = evaluate_program(program, self.dsl, self.task_envs)
+        self.num_evaluations += 1
         
         if reward > self.best_reward:
             self.best_reward = reward
