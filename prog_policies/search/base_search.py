@@ -54,6 +54,7 @@ class BaseSearch(ABC):
             latent_model_args['dsl'] = dsl
             latent_model_args['env_args'] = env_args
             latent_model_args['env_cls'] = env_cls
+            torch.set_num_threads(self.n_proc)
             self.latent_model = load_model(latent_model_cls_name, latent_model_args,
                                            latent_model_params_path)
         self.search_seed = search_seed
