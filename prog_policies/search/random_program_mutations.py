@@ -107,7 +107,8 @@ class RandomProgramMutations(BaseSearch):
         return mutated_program
     
     def search_iteration(self):
-        self.log(f'Iteration {self.current_iteration}: Best reward {self.best_reward}, evaluations {self.num_evaluations}')
+        if self.current_iteration % 100 == 0:
+            self.log(f'Iteration {self.current_iteration}: Best reward {self.best_reward}, evaluations {self.num_evaluations}')
         
         if self.current_reward > self.best_reward:
             self.best_reward = self.current_reward
