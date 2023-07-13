@@ -110,7 +110,7 @@ class SimulatedAnnealing(BaseSearch):
     def mutate_current_program(self) -> dsl_nodes.Program:
         mutated_program = copy.deepcopy(self.current_program)
         
-        index = self.np_rng.randint(mutated_program.get_size())
+        index = self.np_rng.randint(len(mutated_program.get_all_nodes()))
         self.current_index = 0
         self.find_and_mutate(mutated_program, index)
         

@@ -8,7 +8,7 @@ from prog_policies.base import dsl_nodes
 from .base_search import BaseSearch
 from .utils import evaluate_program
 
-class RandomProgramMutations(BaseSearch):
+class StochasticHillClimbing(BaseSearch):
     def parse_method_args(self, search_method_args: dict):
         pass
         
@@ -100,7 +100,7 @@ class RandomProgramMutations(BaseSearch):
     def mutate_current_program(self) -> dsl_nodes.Program:
         mutated_program = copy.deepcopy(self.current_program)
         
-        index = self.np_rng.randint(mutated_program.get_size())
+        index = self.np_rng.randint(len(mutated_program.get_all_nodes()))
         self.current_index = 0
         self.find_and_mutate(mutated_program, index)
         

@@ -33,6 +33,32 @@ class BaseTask(ABC):
     def get_reward(self, environment: BaseEnvironment) -> tuple[bool, float]:
         pass
     
+    def find_indices_of_ast_path(self, subprogram: dsl_nodes.BaseNode, node: dsl_nodes.BaseNode,
+                                 current_index: int = 0) -> list[int]:
+        if subprogram == node:
+            return [current_index]
+        for i, child in enumerate(subprogram.children):
+            child_indices = self.find_indices_of_ast_path(child, node, current_index + 1 + i)
+            if len(child_indices) > 0:
+                return [current_index] + child_indices
+        return []
+    
+    def evaluate_and_assign_credit(self, program: dsl_nodes.Program) -> tuple[float, list[float]]:
+        self.reset_environment()
+        reward = 0.
+        node_score = [0. for _ in range(len(program.get_all_nodes()))]
+        for action in program.run_generator(self.environment):
+            terminated, instant_reward = self.get_reward(self.environment)
+            if self.environment.is_crashed():
+                instant_reward += self.crash_penalty
+            reward += instant_reward
+            indices = self.find_indices_of_ast_path(program, action)
+            for i in indices:
+                node_score[i] += instant_reward
+            if terminated or self.environment.is_crashed():
+                break
+        return reward, node_score
+    
     def evaluate_program(self, program: dsl_nodes.Program) -> float:
         self.reset_environment()
         reward = 0.
