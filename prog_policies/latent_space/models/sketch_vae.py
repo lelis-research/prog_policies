@@ -1,17 +1,18 @@
 import torch
 
-from .base_vae import ModelOutput
+from .base_vae import ModelReturn
 from .leaps_vae import LeapsVAE
 
 class SketchVAE(LeapsVAE):
     
-    def forward(self, s_h: torch.Tensor, a_h: torch.Tensor, a_h_mask: torch.Tensor, 
-                prog: torch.Tensor, prog_mask: torch.Tensor, prog_teacher_enforcing = True,
-                a_h_teacher_enforcing = True) -> ModelOutput:
-        z = self.encode(prog, prog_mask)
+    def forward(self, data_batch: tuple, prog_teacher_enforcing = True,
+                a_h_teacher_enforcing = True) -> ModelReturn:
+        s_h, a_h, a_h_masks, progs, progs_masks = data_batch
+
+        z = self.encode(progs, progs_masks)
         
-        decoder_result = self.decode(z, prog, prog_mask, prog_teacher_enforcing)
+        decoder_result = self.decode(z, progs, progs_masks, prog_teacher_enforcing)
         pred_progs, pred_progs_logits, pred_progs_masks = decoder_result
         
-        return ModelOutput(pred_progs, pred_progs_logits, pred_progs_masks,
+        return ModelReturn(pred_progs, pred_progs_logits, pred_progs_masks,
                            None, None, None)

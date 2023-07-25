@@ -71,12 +71,12 @@ class ProgramOnlyDataset(ProgramDataset):
 
 def make_dataloaders(dsl: BaseDSL, device: torch.device, dataset_path: str, data_class_name = 'ProgramDataset',
                      max_program_length = 45, max_demo_length = 100, batch_size = 32,
-                     train_ratio = 0.8, val_ratio = 0.1, random_seed = 1):
+                     train_ratio = 0.8, val_ratio = 0.1, data_seed = 1):
     
     with open(dataset_path, 'rb') as f:
         program_list = pickle.load(f)
     
-    rng = np.random.RandomState(random_seed)
+    rng = np.random.RandomState(data_seed)
     rng.shuffle(program_list)
 
     data_cls = globals()[data_class_name]
@@ -92,7 +92,7 @@ def make_dataloaders(dsl: BaseDSL, device: torch.device, dataset_path: str, data
     val_dataset = data_cls(valid_program_list, dsl, device, max_program_length, max_demo_length)
     test_dataset = data_cls(test_program_list, dsl, device, max_program_length, max_demo_length)
     
-    torch_rng = torch.Generator().manual_seed(random_seed)
+    torch_rng = torch.Generator().manual_seed(data_seed)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, generator=torch_rng)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, drop_last=True, generator=torch_rng)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, drop_last=True, generator=torch_rng)

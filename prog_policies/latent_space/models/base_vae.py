@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import NamedTuple
+from logging import Logger
 import numpy as np
 import torch
 from torch import nn
@@ -9,13 +10,15 @@ from prog_policies.base import BaseDSL, BaseEnvironment
 from ..utils import init, EnvironmentBatch
 from ..syntax_checker import SyntaxChecker
 
-class ModelOutput(NamedTuple):
-    pred_progs: torch.Tensor
-    pred_progs_logits: torch.Tensor
-    pred_progs_masks: torch.Tensor
-    pred_a_h: torch.Tensor
-    pred_a_h_logits: torch.Tensor
-    pred_a_h_masks: torch.Tensor
+
+class ModelReturn(NamedTuple):
+    z: torch.Tensor
+    progs: torch.Tensor
+    progs_logits: torch.Tensor
+    progs_masks: torch.Tensor
+    a_h: torch.Tensor
+    a_h_logits: torch.Tensor
+    a_h_masks: torch.Tensor
 
 
 class BaseVAE(nn.Module):
@@ -24,7 +27,7 @@ class BaseVAE(nn.Module):
     """    
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256, model_params_path: str = None):
+                 hidden_size = 256, model_params_path: str = None, logger: Logger = None):
         super().__init__()
         
         torch.manual_seed(model_seed)
@@ -55,23 +58,6 @@ class BaseVAE(nn.Module):
         env = self.env_cls(**self.env_args)
         self.state_shape = env.state_shape
         
-        # Input: s_i (CxHxW). Output: enc(s_i) (Z).
-        self.state_encoder = nn.Sequential(
-            self.init_(nn.Conv2d(self.state_shape[0], 32, 3, stride=1)), nn.ReLU(),
-            self.init_(nn.Conv2d(32, 32, 3, stride=1)), nn.ReLU(), nn.Flatten(),
-            self.init_(nn.Linear(32 * 4 * 4, self.hidden_size)), nn.ReLU()
-        )
-        
-        # Input: a_i (A). Output: enc(a_i) (A).
-        self.action_encoder = nn.Embedding(self.num_agent_actions, self.num_agent_actions)
-        
-        # Input: rho_i (T). Output: enc(rho_i) (T).
-        self.token_encoder = nn.Embedding(self.num_program_tokens, self.num_program_tokens)
-        
-        # Encoder VAE utils
-        self.encoder_mu = torch.nn.Linear(self.hidden_size, self.hidden_size)
-        self.encoder_log_sigma = torch.nn.Linear(self.hidden_size, self.hidden_size)
-        
         self.softmax = nn.LogSoftmax(dim=-1)
         
         # syntax_checker_tokens = dsl.get_tokens()
@@ -83,6 +69,8 @@ class BaseVAE(nn.Module):
         
         if model_params_path is not None:
             self.load_state_dict(torch.load(model_params_path, map_location=self.device))
+            
+        self.logger = logger
 
     def env_init(self, states: torch.Tensor):
         states_np = states.detach().cpu().numpy().astype(np.bool_)
@@ -100,25 +88,12 @@ class BaseVAE(nn.Module):
         # new_states = np.moveaxis(new_states,[-1,-2,-3], [-3,-1,-2])
         new_states = torch.tensor(new_states, dtype=torch.float32, device=self.device)
         return new_states
-
-    def sample_latent_vector(self, enc_hidden_state: torch.Tensor) -> torch.Tensor:
-        # Sampling z with reperameterization trick
-        mu = self.encoder_mu(enc_hidden_state)
-        log_sigma = self.encoder_log_sigma(enc_hidden_state)
-        sigma = torch.exp(log_sigma)
-        std_z = torch.randn(sigma.size(), device=self.device)
-        
-        z = mu + sigma * std_z
-        
-        self.z_mu = mu
-        self.z_sigma = sigma
-        
-        return z
     
-    def get_latent_loss(self):
-        mean_sq = self.z_mu * self.z_mu
-        stddev_sq = self.z_sigma * self.z_sigma
-        return 0.5 * torch.mean(mean_sq + stddev_sq - torch.log(stddev_sq) - 1)
+    def log(self, message: str):
+        if self.logger is not None:
+            self.logger.info(f'[{self.__class__.__name__}] {message}')
+        else:
+            print(f'[{self.__class__.__name__}] {message}')
     
     def get_syntax_mask(self, batch_size: int, current_tokens: torch.Tensor, grammar_state: list):
         out_of_syntax_list = []
@@ -136,9 +111,8 @@ class BaseVAE(nn.Module):
 
         return syntax_mask, grammar_state
 
-    def forward(self, s_h: torch.Tensor, a_h: torch.Tensor, a_h_mask: torch.Tensor, 
-                prog: torch.Tensor, prog_mask: torch.Tensor, prog_teacher_enforcing = True,
-                a_h_teacher_enforcing = True) -> ModelOutput:
+    def forward(self, data_batch: tuple, prog_teacher_enforcing = True,
+                a_h_teacher_enforcing = True) -> ModelReturn:
         raise NotImplementedError
     
     def encode_program(self, prog: torch.Tensor) -> torch.Tensor:

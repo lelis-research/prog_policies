@@ -1,3 +1,4 @@
+import logging
 import torch
 import unittest, sys
 
@@ -7,7 +8,6 @@ from prog_policies.karel import KarelDSL, KarelEnvironment
 from prog_policies.latent_space.models import LeapsVAE
 from prog_policies.latent_space.syntax_checker import SyntaxChecker
 from prog_policies.latent_space.program_dataset import make_dataloaders
-from prog_policies.latent_space.trainer import Trainer
 
 class TestLatentSpace(unittest.TestCase):
     
@@ -94,10 +94,23 @@ class TestLatentSpace(unittest.TestCase):
                                                             dsl.t2i['putMarker']]))
     
     def testTrainer(self):
+        logger = logging.getLogger()
+        logger.disabled = True
         device = torch.device('cpu')
         dsl = KarelDSL()
-        env = KarelEnvironment()
-        model = LeapsVAE(dsl, env, device, hidden_size=8, max_demo_length=20)
+        model_params = {
+            'env_args': {
+                'env_width': 8,
+                'env_height': 8,
+                'crashable': False,
+                'leaps_behaviour': True
+            },
+            'hidden_size': 16,
+            'max_program_length': 45,
+            'max_demo_length': 20,
+            'model_seed': 1
+        }
+        model = LeapsVAE(dsl, device, KarelEnvironment, logger=logger, **model_params)
         dataloader_params = {
             'dataset_path': 'data/leaps_dataset_reduced.pkl',
             'batch_size': 16,
@@ -106,17 +119,19 @@ class TestLatentSpace(unittest.TestCase):
         train_data, val_data, _ = make_dataloaders(dsl, device, **dataloader_params)
         trainer_params = {
             'num_epochs': 1,
+            'name': 'LeapsDebug'
         }
-        trainer = Trainer(model, **trainer_params)
-        intial_batch_return = trainer._run_batch(next(iter(train_data)), training=False)
-        _, _, _, _, initial_progs_t_accuracy, _, initial_a_h_t_accuracy, _ = intial_batch_return
+        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
+        first_batch = next(iter(train_data))
+        initial_output = model(first_batch)
+        _, initial_accs = model.get_losses_and_accs(first_batch, initial_output, loss_fn)
         # Checking if our trainer can run a single epoch without errors
-        trainer.train(train_data, val_data)
-        final_batch_return = trainer._run_batch(next(iter(train_data)), training=False)
-        _, _, _, _, final_progs_t_accuracy, _, final_a_h_t_accuracy, _ = final_batch_return
+        model.fit(train_data, val_data, **trainer_params)        
+        final_output = model(first_batch)
+        _, final_accs = model.get_losses_and_accs(first_batch, final_output, loss_fn)
         # Checking if our accuracy improved at least on training data
-        self.assertGreater(final_progs_t_accuracy, initial_progs_t_accuracy)
-        self.assertGreater(final_a_h_t_accuracy, initial_a_h_t_accuracy)
+        self.assertGreater(final_accs.progs_t, initial_accs.progs_t)
+        self.assertGreater(final_accs.a_h_t, initial_accs.a_h_t)
 
 if __name__ == '__main__':
     unittest.main()
