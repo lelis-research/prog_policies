@@ -27,8 +27,13 @@ class BaseVAE(nn.Module):
     """    
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256, model_params_path: str = None, logger: Logger = None):
+                 hidden_size = 256, model_params_path: str = None, logger: Logger = None,
+                 name: str = None):
         super().__init__()
+        
+        if name is None:
+            name = self.__class__.__name__
+        self.name = name
         
         torch.manual_seed(model_seed)
 

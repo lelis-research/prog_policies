@@ -99,6 +99,7 @@ class TestLatentSpace(unittest.TestCase):
         device = torch.device('cpu')
         dsl = KarelDSL()
         model_params = {
+            'name': 'LeapsDebug',
             'env_args': {
                 'env_width': 8,
                 'env_height': 8,
@@ -118,8 +119,7 @@ class TestLatentSpace(unittest.TestCase):
         }
         train_data, val_data, _ = make_dataloaders(dsl, device, **dataloader_params)
         trainer_params = {
-            'num_epochs': 1,
-            'name': 'LeapsDebug'
+            'num_epochs': 1
         }
         loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
         first_batch = next(iter(train_data))

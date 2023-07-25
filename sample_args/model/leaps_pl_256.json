@@ -1,5 +1,4 @@
 {
-    "name": "LEAPS-PL-256",
     "class": "LeapsVAE",
     "env_args": {
         "env_height": 8,

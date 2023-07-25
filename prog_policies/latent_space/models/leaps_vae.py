@@ -32,9 +32,9 @@ class LeapsVAE(BaseVAE):
     """    
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256, logger: Logger = None):
+                 hidden_size = 256, logger: Logger = None, name: str = None):
         super().__init__(dsl, device, env_cls, env_args, max_program_length, max_demo_length,
-                         model_seed, hidden_size, logger=logger)
+                         model_seed, hidden_size, logger=logger, name=name)
         
         # Inputs: enc(rho_i) (T). Output: enc_state (Z). Hidden state: h_i: z = h_t (Z).
         self.encoder_gru = nn.GRU(self.num_program_tokens, self.hidden_size)
@@ -352,16 +352,14 @@ class LeapsVAE(BaseVAE):
             disable_a_h_teacher_enforcing: bool = False,
             optim_lr: float = 5e-4, save_params_each_epoch: bool = False,
             num_epochs: int = 100, logger: Logger = None,
-            base_output_folder: str = 'output', name: str = None):
+            base_output_folder: str = 'output'):
         
         optimizer = torch.optim.Adam(
             filter(lambda p: p.requires_grad, self.parameters()),
             lr=optim_lr
         )
         loss_fn = nn.CrossEntropyLoss(reduction='mean')
-        if name is None:
-            name = self.__class__.__name__
-        output_folder = os.path.join(base_output_folder, 'trainer', name)
+        output_folder = os.path.join(base_output_folder, 'trainer', self.name)
         model_folder = os.path.join(output_folder, 'model')
         os.makedirs(output_folder, exist_ok=True)
         os.makedirs(model_folder, exist_ok=True)
