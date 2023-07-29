@@ -24,7 +24,8 @@ class BaseSearch(ABC):
                  latent_model_params_path: str = None, search_seed: int = 1,
                  checkpoint_frequency: int = 100, base_output_folder: str = 'output',
                  base_checkpoint_folder: str = 'checkpoints', logger: Logger = None,
-                 n_proc: int = 1, only_continue_from_checkpoint: bool = False):
+                 n_proc: int = 1, only_continue_from_checkpoint: bool = False,
+                 method_label: str = None):
         self.dsl = dsl
         task_cls = get_task_cls(task_cls_name)
         self.task_envs = [task_cls(env_args, i) for i in range(number_executions)]
@@ -37,15 +38,16 @@ class BaseSearch(ABC):
         else:
             env_behaviour = 'Standard'
         task_specifier = f'{task_cls_name}_{env_width}x{env_height}_{env_behaviour}'
-        method_specifier = self.__class__.__name__
-        self.output_folder = os.path.join(base_output_folder, exp_name, 'search', method_specifier)
+        if method_label is None:
+            method_label = self.__class__.__name__
+        self.output_folder = os.path.join(base_output_folder, exp_name, 'search', method_label)
         os.makedirs(self.output_folder, exist_ok=True)
         self.parse_method_args(search_method_args)
         with open(os.path.join(self.output_folder, 'search_args.json'), 'w') as f:
             json.dump(search_method_args, f)
         self.task_output_folder = os.path.join(self.output_folder, task_specifier)
         self.checkpoint_folder = os.path.join(base_checkpoint_folder, exp_name, 'search',
-                                              method_specifier, task_specifier)
+                                              method_label, task_specifier)
         os.makedirs(self.task_output_folder, exist_ok=True)
         os.makedirs(self.checkpoint_folder, exist_ok=True)
         self.max_evaluations = max_evaluations
