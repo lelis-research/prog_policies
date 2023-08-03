@@ -31,11 +31,11 @@ class StochasticHillClimbingWithCreditAssignment(StochasticHillClimbing):
     def mutate_current_program(self) -> dsl_nodes.Program:
         mutated_program = copy.deepcopy(self.current_program)
         
-        probs = self.softmax(-np.array(self.current_nodes_score))
-        index = self.np_rng.choice(len(probs), p=probs)
+        probs = self.softmax(-np.array(self.current_nodes_score[1:]))
+        index = self.np_rng.choice(len(probs), p=probs) + 1
+        node_to_mutate = mutated_program.get_all_nodes()[index]
         
-        self.current_index = 0
-        self.find_and_mutate(mutated_program, index)
+        self.find_node_and_mutate(mutated_program, node_to_mutate)
         
         return mutated_program
     
