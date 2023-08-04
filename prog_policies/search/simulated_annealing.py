@@ -107,41 +107,11 @@ class SimulatedAnnealing(BaseSearch):
             else:
                 self.find_node_and_mutate(node.children[i], node_to_mutate)
     
-    def find_and_mutate(self, node: dsl_nodes.BaseNode, index_to_mutate: int) -> None:
-        for i, child_type in enumerate(node.children_types):
-            if self.current_index == index_to_mutate:
-                node_prod_rules = self.dsl.prod_rules[type(node)]
-                child_probs = self.dsl.get_dsl_nodes_probs(child_type)
-                for child_type in child_probs:
-                    if child_type not in node_prod_rules[i]:
-                        child_probs[child_type] = 0.
-                
-                p_list = list(child_probs.values()) / np.sum(list(child_probs.values()))
-                child = self.np_rng.choice(list(child_probs.keys()), p=p_list)
-                child_instance = child()
-                if child.get_number_children() > 0:
-                    self.fill_children_of_node(child_instance, max_depth=2, max_sequence=4)
-                elif isinstance(child_instance, dsl_nodes.Action):
-                    child_instance.name = self.np_rng.choice(list(self.dsl.action_probs.keys()),
-                                                             p=list(self.dsl.action_probs.values()))
-                elif isinstance(child_instance, dsl_nodes.BoolFeature):
-                    child_instance.name = self.np_rng.choice(list(self.dsl.bool_feat_probs.keys()),
-                                                             p=list(self.dsl.bool_feat_probs.values()))
-                elif isinstance(child_instance, dsl_nodes.ConstInt):
-                    child_instance.value = self.np_rng.choice(list(self.dsl.const_int_probs.keys()),
-                                                              p=list(self.dsl.const_int_probs.values()))
-                node.children[i] = child_instance
-                return
-            else:
-                self.current_index += 1
-                self.find_and_mutate(node.children[i], index_to_mutate)
-    
     def mutate_current_program(self) -> dsl_nodes.Program:
         mutated_program = copy.deepcopy(self.current_program)
         
-        index = self.np_rng.randint(len(mutated_program.get_all_nodes()))
-        self.current_index = 0
-        self.find_and_mutate(mutated_program, index)
+        node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
+        self.find_node_and_mutate(mutated_program, node_to_mutate)
         
         return mutated_program
     
