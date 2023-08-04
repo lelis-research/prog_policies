@@ -8,7 +8,7 @@ import sys
 sys.path.append('.')
 
 from prog_policies.karel import KarelDSL, KarelEnvironment
-from prog_policies.latent_space.models import LeapsVAE
+from prog_policies.latent_space.models import load_model
 from prog_policies.latent_space.program_dataset import make_dataloaders
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
@@ -60,9 +60,17 @@ if __name__ == '__main__':
     
     logger = logging.getLogger()
     dsl = KarelDSL()
+    
+    model = load_model(model_args["class"], {
+        "dsl": dsl,
+        "device": device,
+        "logger": logger,
+        "name": args.name,
+        "env_cls": KarelEnvironment,
+        "env_args": model_args["env_args"],
+        **model_args["params"]
+    })
 
-    model = LeapsVAE(dsl, device, KarelEnvironment, env_args=model_args["env_args"],
-                     logger=logger, name=args.name, **model_args["params"])
     train_data, val_data, _ = make_dataloaders(dsl, device, **dataloader_args)
     
     model.fit(train_data, val_data, **model_args["trainer"])

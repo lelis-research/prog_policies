@@ -52,6 +52,38 @@ class ProgramDataset(Dataset):
         return s_h, a_h, a_h_mask, prog, prog_mask
 
 
+class ProgramPerceptionsDataset(ProgramDataset):
+    
+    def __getitem__(self, idx):
+        prog_str, (_, perc_h, a_h, a_h_len) = self.programs[idx]
+        
+        prog_int = self.parse_str_to_int(prog_str)
+        prog = np.array(prog_int)
+
+        prog = torch.from_numpy(prog).to(self.device).to(torch.long)
+        program_len = prog.shape[0]
+        prog_sufix = torch.tensor((self.max_program_len - program_len - 1) * [self.pad_token],
+                                  device=self.device, dtype=torch.long)
+        prog = torch.cat((prog, prog_sufix))
+        
+        a_h_expanded = np.ones((a_h.shape[0], self.max_demo_length), dtype=int) * (self.action_nop)
+        perc_h_expanded = np.zeros((perc_h.shape[0], self.max_demo_length, *perc_h.shape[2:]), dtype=bool)
+
+        # Add no-op actions for empty demonstrations
+        for i in range(a_h_len.shape[0]):
+            a_h_expanded[i, 1:a_h_len[i]+1] = a_h[i, :a_h_len[i]]
+            perc_h_expanded[i, :a_h_len[i]+1] = perc_h[i, :a_h_len[i]+1]
+            perc_h_expanded[i, a_h_len[i]+1:] = perc_h[i, a_h_len[i]] * (self.max_demo_length - a_h_len[i] + 1)
+        
+        perc_h = torch.tensor(perc_h_expanded, device=self.device, dtype=torch.float32)
+        a_h = torch.tensor(a_h_expanded, device=self.device, dtype=torch.long)
+
+        prog_mask = (prog != self.pad_token)
+        a_h_mask = (a_h != self.action_nop)
+
+        return perc_h, a_h, a_h_mask, prog, prog_mask
+
+
 class ProgramOnlyDataset(ProgramDataset):
     
     def __getitem__(self, idx):

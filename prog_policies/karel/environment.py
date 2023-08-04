@@ -182,11 +182,11 @@ class KarelEnvironment(BaseEnvironment):
         
     def markers_present(self) -> bool:
         row, col, _ = self.hero_pos
-        return self.markers_grid[row, col] > 0
+        return bool(self.markers_grid[row, col] > 0)
     
     def no_markers_present(self) -> bool:
         row, col, _ = self.hero_pos
-        return self.markers_grid[row, col] == 0
+        return bool(self.markers_grid[row, col] == 0)
     
     def move(self):
         r, c, d = self.hero_pos

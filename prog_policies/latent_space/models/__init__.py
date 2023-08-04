@@ -2,6 +2,7 @@ import torch
 
 from .base_vae import BaseVAE
 from .leaps_vae import LeapsVAE
+from .leaps_perceptions_vae import LeapsPerceptionsVAE
 from .sketch_vae import SketchVAE
 
 def load_model(model_cls_name: str, model_args: dict,

@@ -50,11 +50,11 @@ class LeapsVAE(BaseVAE):
             nn.Tanh(), self.init_(nn.Linear(self.hidden_size, self.num_program_tokens))
         )
         
-        # Input: enc(rho_i) (T), z (Z). Output: prog_out (Z).
+        # Input: enc(s_i) (Z), enc(a_i) (A), z (Z). Output: pol_out (Z).
         self.policy_gru = nn.GRU(2 * self.hidden_size + self.num_agent_actions, self.hidden_size)
         init_gru(self.policy_gru)
         
-        # Inputs: prog_out (Z), z (Z), enc(rho_i). Output: prob(rho_hat) (T).
+        # Inputs: pol_out (Z). Output: prob(a_hat) (A).
         self.policy_mlp = nn.Sequential(
             self.init_(nn.Linear(self.hidden_size, self.hidden_size)), nn.Tanh(),
             self.init_(nn.Linear(self.hidden_size, self.hidden_size)), nn.Tanh(),

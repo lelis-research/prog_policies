@@ -63,6 +63,8 @@ class BaseVAE(nn.Module):
         env = self.env_cls(**self.env_args)
         self.state_shape = env.state_shape
         
+        self.perceptions_size = len(env.bool_features_list)
+        
         self.softmax = nn.LogSoftmax(dim=-1)
         
         # syntax_checker_tokens = dsl.get_tokens()
