@@ -9,15 +9,22 @@ from .utils import evaluate_and_assign_credit
 
 class SimulatedAnnealingWithCreditAssignment(SimulatedAnnealing):
     
+    def parse_method_args(self, search_method_args: dict):
+        super().parse_method_args(search_method_args)
+        self.initial_score_temperature = search_method_args.get('initial_score_temperature', 1.0)
+        self.temperature_decay = search_method_args.get('temperature_decay', 0.9999)
+    
     def init_search_vars(self):
+        self.score_temperature = self.initial_score_temperature
         self.iterations_since_restart = 0
         self.current_program = self.random_program()
-        self.current_reward, self.current_nodes_score = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
+        self.current_reward, self.current_nodes_score, _ = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
         self.current_temperature = self.initial_temperature
         self.best_nodes_score = self.current_nodes_score
     
     def get_search_vars(self) -> dict:
         return {
+            'score_temperature': self.score_temperature,
             'iterations_since_restart': self.iterations_since_restart,
             'current_program': self.current_program,
             'current_reward': self.current_reward,
@@ -27,6 +34,7 @@ class SimulatedAnnealingWithCreditAssignment(SimulatedAnnealing):
         }
     
     def set_search_vars(self, search_vars: dict):
+        self.score_temperature = search_vars.get('score_temperature')
         self.iterations_since_restart = search_vars.get('iterations_since_restart')
         self.current_program = search_vars.get('current_program')
         self.current_reward = search_vars.get('current_reward')
@@ -40,9 +48,12 @@ class SimulatedAnnealingWithCreditAssignment(SimulatedAnnealing):
     def mutate_current_program(self) -> dsl_nodes.Program:
         mutated_program = copy.deepcopy(self.current_program)
         
-        probs = self.softmax(-np.array(self.current_nodes_score[1:]))
-        index = self.np_rng.choice(len(probs), p=probs) + 1
-        node_to_mutate = mutated_program.get_all_nodes()[index]
+        if self.np_rng.rand() > self.score_temperature:
+            probs = self.softmax(-np.array(self.current_nodes_score[1:]))
+            index = self.np_rng.choice(len(probs), p=probs) + 1
+            node_to_mutate = mutated_program.get_all_nodes()[index]
+        else:
+            node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
         
         self.find_node_and_mutate(mutated_program, node_to_mutate)
         
@@ -86,7 +97,7 @@ class SimulatedAnnealingWithCreditAssignment(SimulatedAnnealing):
                 self.current_nodes_score = self.best_nodes_score
             else:
                 self.current_program = self.random_program()
-                self.current_reward, self.current_nodes_score = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
+                self.current_reward, self.current_nodes_score, _ = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
                 self.num_evaluations += 1
 
             self.current_temperature = self.initial_temperature
