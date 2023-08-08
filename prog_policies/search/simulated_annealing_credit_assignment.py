@@ -18,7 +18,7 @@ class SimulatedAnnealingWithCreditAssignment(SimulatedAnnealing):
         self.score_temperature = self.initial_score_temperature
         self.iterations_since_restart = 0
         self.current_program = self.random_program()
-        self.current_reward, self.current_nodes_score, _ = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
+        self.current_reward, self.current_nodes_score = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
         self.current_temperature = self.initial_temperature
         self.best_nodes_score = self.current_nodes_score
     
@@ -97,7 +97,7 @@ class SimulatedAnnealingWithCreditAssignment(SimulatedAnnealing):
                 self.current_nodes_score = self.best_nodes_score
             else:
                 self.current_program = self.random_program()
-                self.current_reward, self.current_nodes_score, _ = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
+                self.current_reward, self.current_nodes_score = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
                 self.num_evaluations += 1
 
             self.current_temperature = self.initial_temperature
