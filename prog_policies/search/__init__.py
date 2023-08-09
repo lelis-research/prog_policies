@@ -2,6 +2,7 @@ from .base_search import BaseSearch
 from .latent_cem import LatentCEM
 from .simulated_annealing import SimulatedAnnealing
 from .simulated_annealing_credit_assignment import SimulatedAnnealingWithCreditAssignment
+from .simulated_annealing_with_simplification import SimulatedAnnealingWithSimplification
 from .latent_simulated_annealing import LatentSimulatedAnnealing
 from .latent_simulated_annealing_random_init import LatentSimulatedAnnealingRandomInit
 from .latent_simulated_annealing_no_mutation import LatentSimulatedAnnealingNoMutation
@@ -10,6 +11,7 @@ from .random_latent import RandomLatent
 from .random_programmatic import RandomProgrammatic
 from .stochastic_hill_climbing import StochasticHillClimbing
 from .stochastic_hill_climbing_credit_assignment import StochasticHillClimbingWithCreditAssignment
+from .stochastic_hill_climbing_with_simplification import StochasticHillClimbingWithSimplification
 
 def get_search_cls(search_cls_name: str) -> BaseSearch:
     search_cls = globals().get(search_cls_name)

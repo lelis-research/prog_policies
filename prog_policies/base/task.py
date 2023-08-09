@@ -35,6 +35,7 @@ class BaseTask(ABC):
     
     def find_indices_of_ast_path(self, subprogram: dsl_nodes.BaseNode, node: dsl_nodes.BaseNode,
                                  current_index: int = 0) -> list[int]:
+        # TODO: optimize -- would be better to have the node's parent as an attribute of the node (double linked)
         if subprogram == node:
             return [current_index]
         for i, child in enumerate(subprogram.children):
@@ -43,21 +44,31 @@ class BaseTask(ABC):
                 return [current_index] + child_indices
         return []
     
-    def evaluate_and_assign_credit(self, program: dsl_nodes.Program) -> tuple[float, list[float]]:
+    def evaluate_and_assign_credit(self, program: dsl_nodes.Program) -> tuple[float, dict, dict]:
         self.reset_environment()
         reward = 0.
-        node_score = [0. for _ in range(len(program.get_all_nodes()))]
+        all_nodes = program.get_all_nodes()
+        node_score = {node: 0. for node in all_nodes}
+        node_count = {node: 0 for node in all_nodes}
+        action_nodes = [node for node in all_nodes if isinstance(node, dsl_nodes.Action)]
+        action_scores = {node: 0. for node in action_nodes}
+        action_counts = {node: 0 for node in action_nodes}
         for action in program.run_generator(self.environment):
             terminated, instant_reward = self.get_reward(self.environment)
             if self.environment.is_crashed():
                 instant_reward += self.crash_penalty
             reward += instant_reward
-            indices = self.find_indices_of_ast_path(program, action)
-            for i in indices:
-                node_score[i] += instant_reward
+            action_scores[action] += instant_reward
+            action_counts[action] += 1
             if terminated or self.environment.is_crashed():
                 break
-        return reward, node_score
+        for action in action_nodes:
+            current_node = action
+            while not issubclass(type(current_node), dsl_nodes.Program):
+                node_score[current_node] += action_scores[action]
+                node_count[current_node] += action_counts[action]
+                current_node = current_node.parent
+        return reward, node_score, node_count
     
     def evaluate_program(self, program: dsl_nodes.Program) -> float:
         self.reset_environment()

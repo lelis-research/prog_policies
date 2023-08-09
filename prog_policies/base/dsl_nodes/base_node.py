@@ -11,6 +11,7 @@ class BaseNode:
 
     def __init__(self, name: Union[str, None] = None):
         self.children: list[Union[BaseNode, None]] = [None for _ in range(self.get_number_children())]
+        self.parent: Union[BaseNode, None] = None
         self.value: Union[None, bool, int] = None
         if name is not None:
             self.name = name
@@ -74,6 +75,7 @@ class BaseNode:
             if arg is not None:
                 assert issubclass(type(arg), children_types[i])
                 inst.children[i] = arg
+                arg.parent = inst
         return inst
     
     # interpret is used by nodes that return a value (IntNode, BoolNode)

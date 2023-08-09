@@ -62,6 +62,7 @@ class StochasticHillClimbing(BaseSearch):
                 child_instance.value = self.np_rng.choice(list(self.dsl.const_int_probs.keys()),
                                                           p=list(self.dsl.const_int_probs.values()))
             node.children[i] = child_instance
+            child_instance.parent = node
     
     def random_program(self) -> dsl_nodes.Program:
         program = dsl_nodes.Program()
@@ -93,6 +94,7 @@ class StochasticHillClimbing(BaseSearch):
                     child_instance.value = self.np_rng.choice(list(self.dsl.const_int_probs.keys()),
                                                               p=list(self.dsl.const_int_probs.values()))
                 node.children[i] = child_instance
+                child_instance.parent = node
                 return
             else:
                 self.find_node_and_mutate(node.children[i], node_to_mutate)
