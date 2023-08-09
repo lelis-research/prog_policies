@@ -26,6 +26,9 @@ class BaseEnvironment(ABC):
 
     def is_crashed(self) -> bool:
         return self.crashed
+    
+    def crash(self):
+        self.crashed = True
 
     def get_bool_feature(self, feature: str):
         self.num_calls += 1
@@ -61,6 +64,10 @@ class BaseEnvironment(ABC):
 
     @abstractmethod
     def set_state(self):
+        pass
+    
+    @abstractmethod
+    def __eq__(self, other: BaseEnvironment) -> bool:
         pass
 
     @classmethod

@@ -18,6 +18,11 @@ class BaseNode:
         else:
             self.name = type(self).__name__
     
+    # Some nodes might use an internal state to keep track of program execution. This function
+    # will be called by the program when running in a new environment
+    def reset_state(self):
+        pass
+    
     # In this implementation, get_size is run recursively in a program, so we do not need to worry
     # about updating each node size as we grow them
     def get_size(self) -> int:

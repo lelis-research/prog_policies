@@ -1,3 +1,5 @@
+import copy
+from typing import Union
 from ..environment import BaseEnvironment
 from .base_node import BaseNode
 
@@ -61,6 +63,8 @@ class Program(BaseNode):
     
     def run_generator(self, env: BaseEnvironment):
         assert self.is_complete(), 'Incomplete Program'
+        for node in self.get_all_nodes():
+            node.reset_state()
         yield from self.children[0].run_generator(env)
 
 
@@ -70,13 +74,26 @@ class While(StatementNode, OperationNode):
     node_depth = 1
     children_types = [BoolNode, StatementNode]
 
+    def reset_state(self):
+        self.previous_envs: list[BaseEnvironment] = []
+
     def run(self, env: BaseEnvironment) -> None:
         while self.children[0].interpret(env):
+            # If we have seen this state previously, we're in an infinite loop
+            for previous_env in self.previous_envs:
+                if env == previous_env:
+                    env.crash()
+            self.previous_envs.append(copy.deepcopy(env))
             if env.is_crashed(): return     # To avoid infinite loops
             self.children[1].run(env)
 
     def run_generator(self, env: BaseEnvironment):
         while self.children[0].interpret(env):
+            # If we have seen this state previously, we're in an infinite loop
+            for previous_env in self.previous_envs:
+                if env == previous_env:
+                    env.crash()
+            self.previous_envs.append(copy.copy(env))
             if env.is_crashed(): return     # To avoid infinite loops
             yield from self.children[1].run_generator(env)
 
@@ -171,11 +188,13 @@ class Or(BoolNode, OperationNode):
 class Action(StatementNode, TerminalNode):
     
     def run(self, env: BaseEnvironment) -> None:
-        env.run_action(self.name)
+        if not env.is_crashed():
+            env.run_action(self.name)
         
     def run_generator(self, env: BaseEnvironment):
-        env.run_action(self.name)
-        yield self
+        if not env.is_crashed():
+            env.run_action(self.name)
+            yield self
 
 
 # For features available in environment
