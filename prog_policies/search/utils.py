@@ -29,7 +29,19 @@ def simplify_program(program: dsl_nodes.Program, nodes_count: dict) -> dsl_nodes
         elif isinstance(node.parent, dsl_nodes.If):
             pass # TODO
         elif isinstance(node.parent, dsl_nodes.ITE):
-            pass # TODO
+            if node.parent.children[1] == node:
+                for i, child in enumerate(node.parent.parent.children):
+                    if child == node.parent:
+                        not_cond = dsl_nodes.Not.new(node.parent.children[0])
+                        new_node = dsl_nodes.If.new(not_cond, node.parent.children[2])
+                        node.parent.parent.children[i] = new_node
+                        new_node.parent = node.parent.parent
+            else:
+                for i, child in enumerate(node.parent.parent.children):
+                    if child == node.parent:
+                        new_node = dsl_nodes.If.new(node.parent.children[0], node.parent.children[1])
+                        node.parent.parent.children[i] = new_node
+                        new_node.parent = node.parent.parent
         elif isinstance(node.parent, dsl_nodes.While):
             pass # TODO
     return simplified_program

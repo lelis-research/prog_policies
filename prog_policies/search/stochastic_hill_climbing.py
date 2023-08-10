@@ -69,11 +69,11 @@ class StochasticHillClimbing(BaseSearch):
         self.fill_children_of_node(program, max_depth=4, max_sequence=6)
         return program
     
-    def find_node_and_mutate(self, node: dsl_nodes.BaseNode, node_to_mutate: dsl_nodes.BaseNode) -> None:
-        for i, child in enumerate(node.children):
+    def mutate_node(self, node_to_mutate: dsl_nodes.BaseNode) -> None:
+        for i, child in enumerate(node_to_mutate.parent.children):
             if child == node_to_mutate:
-                child_type = node.children_types[i]
-                node_prod_rules = self.dsl.prod_rules[type(node)]
+                child_type = node_to_mutate.parent.children_types[i]
+                node_prod_rules = self.dsl.prod_rules[type(node_to_mutate.parent)]
                 child_probs = self.dsl.get_dsl_nodes_probs(child_type)
                 for child_type in child_probs:
                     if child_type not in node_prod_rules[i]:
@@ -86,24 +86,21 @@ class StochasticHillClimbing(BaseSearch):
                     self.fill_children_of_node(child_instance, max_depth=2, max_sequence=4)
                 elif isinstance(child_instance, dsl_nodes.Action):
                     child_instance.name = self.np_rng.choice(list(self.dsl.action_probs.keys()),
-                                                             p=list(self.dsl.action_probs.values()))
+                                                                p=list(self.dsl.action_probs.values()))
                 elif isinstance(child_instance, dsl_nodes.BoolFeature):
                     child_instance.name = self.np_rng.choice(list(self.dsl.bool_feat_probs.keys()),
-                                                             p=list(self.dsl.bool_feat_probs.values()))
+                                                                p=list(self.dsl.bool_feat_probs.values()))
                 elif isinstance(child_instance, dsl_nodes.ConstInt):
                     child_instance.value = self.np_rng.choice(list(self.dsl.const_int_probs.keys()),
-                                                              p=list(self.dsl.const_int_probs.values()))
-                node.children[i] = child_instance
-                child_instance.parent = node
-                return
-            else:
-                self.find_node_and_mutate(node.children[i], node_to_mutate)
+                                                                p=list(self.dsl.const_int_probs.values()))
+                node_to_mutate.parent.children[i] = child_instance
+                child_instance.parent = node_to_mutate.parent
     
     def mutate_current_program(self) -> dsl_nodes.Program:
         mutated_program = copy.deepcopy(self.current_program)
         
         node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
-        self.find_node_and_mutate(mutated_program, node_to_mutate)
+        self.mutate_node(node_to_mutate)
         
         return mutated_program
     

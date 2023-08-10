@@ -16,7 +16,7 @@ class StochasticHillClimbingWithCreditAssignment(StochasticHillClimbing):
     def init_search_vars(self):
         self.score_temperature = self.initial_score_temperature
         self.current_program = self.random_program()
-        self.current_reward, self.current_nodes_score = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
+        self.current_reward, self.current_nodes_score, _ = evaluate_and_assign_credit(self.current_program, self.dsl, self.task_envs)
     
     def get_search_vars(self) -> dict:
         return {
@@ -39,13 +39,13 @@ class StochasticHillClimbingWithCreditAssignment(StochasticHillClimbing):
         mutated_program = copy.deepcopy(self.current_program)
         
         if self.np_rng.rand() > self.score_temperature:
-            probs = self.softmax(-np.array(self.current_nodes_score[1:]))
+            probs = self.softmax(-np.array(list(self.current_nodes_score.values())[1:]))
             index = self.np_rng.choice(len(probs), p=probs) + 1
             node_to_mutate = mutated_program.get_all_nodes()[index]
         else:
             node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
         
-        self.find_node_and_mutate(mutated_program, node_to_mutate)
+        self.mutate_node(node_to_mutate)
         
         return mutated_program
     
@@ -62,7 +62,7 @@ class StochasticHillClimbingWithCreditAssignment(StochasticHillClimbing):
         
         next_program = self.mutate_current_program()
         self.score_temperature *= self.temperature_decay
-        next_reward, next_nodes_score = evaluate_and_assign_credit(next_program, self.dsl, self.task_envs)
+        next_reward, next_nodes_score, _ = evaluate_and_assign_credit(next_program, self.dsl, self.task_envs)
         self.num_evaluations += 1
         
         if next_reward >= self.current_reward:
