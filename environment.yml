@@ -2,6 +2,7 @@ name: prog_policies_env
 dependencies:
   - python=3.8
   - numpy
+  - scipy
   - Pillow
   - tqdm
   - matplotlib
@@ -9,4 +10,5 @@ dependencies:
   - pip
   - pip:
       - torch==1.10.0
+      - wandb
       - scalene

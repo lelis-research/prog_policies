@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import sys
-import torch
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
+import torch
+import wandb
 
 sys.path.append('.')
 
@@ -20,6 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--search_args_path', default='sample_args/search/latent_cem.json', help='Arguments path for search method')
     parser.add_argument('--log_folder', default='logs', help='Folder to save logs')
     parser.add_argument('--search_seed', type=int, help='Seed for search method')
+    parser.add_argument('--wandb_entity', type=str, help='Wandb entity')
+    parser.add_argument('--wandb_project', type=str, help='Wandb project')
     
     args = parser.parse_args()
     
@@ -42,12 +46,20 @@ if __name__ == '__main__':
     
     logger = logging.getLogger()
     
+    if args.wandb_project:
+        wandb_args = {
+            'project': args.wandb_project,
+            'entity': args.wandb_entity,
+        }
+    else:
+        wandb_args = None
+    
     device = torch.device('cpu')
     
     dsl = KarelDSL()
     
     search_cls = get_search_cls(args.search_method)
     
-    searcher = search_cls(dsl, KarelEnvironment, device, logger=logger, **search_args)
+    searcher = search_cls(dsl, KarelEnvironment, device, logger=logger, wandb_args=wandb_args, **search_args)
     
     searcher.search()

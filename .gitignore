@@ -4,3 +4,4 @@ output
 checkpoints
 data/*.pkl
 logs
+wandb

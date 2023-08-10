@@ -9,6 +9,7 @@ from multiprocessing import Pool
 
 import numpy as np
 import torch
+import wandb
 
 from prog_policies.base import BaseDSL, BaseEnvironment
 from prog_policies.latent_space.models import load_model
@@ -25,7 +26,7 @@ class BaseSearch(ABC):
                  checkpoint_frequency: int = 100, base_output_folder: str = 'output',
                  base_checkpoint_folder: str = 'checkpoints', logger: Logger = None,
                  n_proc: int = 1, only_continue_from_checkpoint: bool = False,
-                 method_label: str = None):
+                 method_label: str = None, wandb_args: dict = None):
         self.dsl = dsl
         task_cls = get_task_cls(task_cls_name)
         self.task_envs = [task_cls(env_args, i) for i in range(number_executions)]
@@ -65,6 +66,30 @@ class BaseSearch(ABC):
         self.checkpoint_frequency = checkpoint_frequency
         self.logger = logger
         self.only_continue_from_checkpoint = only_continue_from_checkpoint
+        if wandb_args:
+            group_name = f'{method_label}_{task_specifier}'
+            run_name = f'{group_name}_{search_seed}'
+            self.wandb_run = wandb.init(
+                group=group_name,
+                name=run_name,
+                config={
+                    'search_seed': search_seed,
+                    'task_cls_name': task_cls_name,
+                    'env_args': env_args,
+                    'number_executions': number_executions,
+                    'exp_name': exp_name,
+                    'search_method_args': search_method_args,
+                    'max_evaluations': max_evaluations,
+                    'latent_model_cls_name': latent_model_cls_name,
+                    'latent_model_args': latent_model_args,
+                    'latent_model_params_path': latent_model_params_path,
+                    'checkpoint_frequency': checkpoint_frequency,
+                    'method_label': method_label
+                },
+                **wandb_args
+            )
+        else:
+            self.wandb_run = None
     
     @abstractmethod
     def parse_method_args(self, search_method_args: dict):
@@ -182,6 +207,14 @@ class BaseSearch(ABC):
         with open(os.path.join(self.task_output_folder, f'seed_{self.search_seed}.csv'), 'w') as f:
             f.write(','.join(fields))
             f.write('\n')
+
+    def _log_wandb(self):
+        self.wandb_run.log(dict(
+                num_evaluations=self.num_evaluations,
+                best_program=self.best_program,
+                best_reward=self.best_reward,
+                **{k: v for k, v in self.get_search_vars().items() if isinstance(v, (int, float))}
+            ), step=self.num_evaluations)
     
     def save_best(self):
         fields = [self.num_evaluations, self.best_reward, self.best_program]
@@ -191,3 +224,5 @@ class BaseSearch(ABC):
         self.log(f'New best program: {self.best_program}')
         self.log(f'New best reward: {self.best_reward}')
         self.log(f'Number of evaluations: {self.num_evaluations}')
+        if self.wandb_run:
+            self._log_wandb()
