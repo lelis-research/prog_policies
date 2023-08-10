@@ -73,6 +73,12 @@ class BaseDSL(ABC):
     @property
     def const_int_probs(self) -> dict[int, float]:
         return {}
+    
+    def structure_only(self):
+        structure_nodes = [n for n in self.nodes_list if not isinstance(n, dsl_nodes.BoolFeature)
+                        and not isinstance(n, dsl_nodes.IntFeature)
+                        and not isinstance(n, dsl_nodes.Action)] + [None]
+        return BaseDSL(structure_nodes)
         
     def extend_dsl(self):
         extended_dsl = copy.deepcopy(self)

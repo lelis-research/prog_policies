@@ -163,6 +163,8 @@ class SyntaxChecker(object):
             self.bool_checks = set([dsl.t2i[bcheck] for bcheck in bool_check])
         if "<HOLE>" in dsl.t2i.keys():
             self.effect_acts.add(dsl.t2i["<HOLE>"])
+            self.bool_checks.add(dsl.t2i["<HOLE>"])
+            self.range_cste.add(dsl.t2i["<HOLE>"])
 
         self.act_acceptable = self.effect_acts | self.flow_lead
         self.flow_needs_bool = set([dsl.t2i[flow_tkn] for flow_tkn in flow_need_bool])

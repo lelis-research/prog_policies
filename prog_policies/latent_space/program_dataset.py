@@ -54,8 +54,20 @@ class ProgramDataset(Dataset):
 
 class ProgramPerceptionsDataset(ProgramDataset):
     
+    def __init__(self, program_list: list, dsl: BaseDSL, device: torch.device, max_program_length=45, max_demo_length=100):
+        super().__init__(program_list, dsl, device, max_program_length, max_demo_length)
+        self.struct_parse_str_to_int = dsl.structure_only().parse_str_to_int
+        self.struct_pad_token = dsl.structure_only().t2i['<pad>']
+        self.domain_specific = [action for action in dsl.get_actions()] +\
+            [bool_feature for bool_feature in dsl.get_bool_features()]
+    
     def __getitem__(self, idx):
         prog_str, (_, perc_h, a_h, a_h_len) = self.programs[idx]
+        
+        # replace every action from self.actions by <HOLE> in prog_str
+        struct_str = prog_str
+        for token in self.domain_specific:
+            struct_str = struct_str.replace(token, '<HOLE>')
         
         prog_int = self.parse_str_to_int(prog_str)
         prog = np.array(prog_int)
@@ -65,6 +77,14 @@ class ProgramPerceptionsDataset(ProgramDataset):
         prog_sufix = torch.tensor((self.max_program_len - program_len - 1) * [self.pad_token],
                                   device=self.device, dtype=torch.long)
         prog = torch.cat((prog, prog_sufix))
+        
+        struct_int = self.struct_parse_str_to_int(struct_str)
+        struct = np.array(struct_int)
+        
+        struct = torch.from_numpy(struct).to(self.device).to(torch.long)
+        struct_sufix = torch.tensor((self.max_program_len - program_len - 1) * [self.struct_pad_token],
+                                    device=self.device, dtype=torch.long)
+        struct = torch.cat((struct, struct_sufix))
         
         a_h_expanded = np.ones((a_h.shape[0], self.max_demo_length), dtype=int) * (self.action_nop)
         perc_h_expanded = np.zeros((perc_h.shape[0], self.max_demo_length, *perc_h.shape[2:]), dtype=bool)
@@ -81,7 +101,7 @@ class ProgramPerceptionsDataset(ProgramDataset):
         prog_mask = (prog != self.pad_token)
         a_h_mask = (a_h != self.action_nop)
 
-        return perc_h, a_h, a_h_mask, prog, prog_mask
+        return perc_h, a_h, a_h_mask, prog, prog_mask, struct
 
 
 class ProgramOnlyDataset(ProgramDataset):
