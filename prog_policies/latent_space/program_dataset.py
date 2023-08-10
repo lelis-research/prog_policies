@@ -56,20 +56,29 @@ class ProgramPerceptionsDataset(ProgramDataset):
     
     def __init__(self, program_list: list, dsl: BaseDSL, device: torch.device, max_program_length=45, max_demo_length=100):
         super().__init__(program_list, dsl, device, max_program_length, max_demo_length)
-        self.struct_parse_str_to_int = dsl.structure_only().parse_str_to_int
-        self.struct_pad_token = dsl.structure_only().t2i['<pad>']
+        structure_dsl = dsl.structure_only()
+        self.struct_parse_str_to_int = structure_dsl.parse_str_to_int
+        self.struct_pad_token = structure_dsl.t2i['<pad>']
+        self.struct_hole_token = structure_dsl.t2i['<HOLE>']
         self.domain_specific = [action for action in dsl.get_actions()] +\
-            [bool_feature for bool_feature in dsl.get_bool_features()]
+            [bool_feature for bool_feature in dsl.get_bool_features()] +\
+            [int_feature for int_feature in dsl.get_int_features()] +\
+            [f'R={i}' for i in range(20)]
+        self.domain_tokens = [dsl.t2i[token] for token in self.domain_specific]
     
     def __getitem__(self, idx):
         prog_str, (_, perc_h, a_h, a_h_len) = self.programs[idx]
         
-        # replace every action from self.actions by <HOLE> in prog_str
-        struct_str = prog_str
-        for token in self.domain_specific:
-            struct_str = struct_str.replace(token, '<HOLE>')
-        
         prog_int = self.parse_str_to_int(prog_str)
+        
+        # replace every domain specific token in prog_int by <HOLE>
+        struct_int = [self.struct_hole_token if token in self.domain_tokens else token for token in prog_int]
+        # for token in prog_int:
+        #     if token in self.domain_tokens:
+        #         struct_int.append(self.struct_hole_token)
+        #     else:
+        #         struct_int.append(token)
+        
         prog = np.array(prog_int)
 
         prog = torch.from_numpy(prog).to(self.device).to(torch.long)
@@ -78,7 +87,6 @@ class ProgramPerceptionsDataset(ProgramDataset):
                                   device=self.device, dtype=torch.long)
         prog = torch.cat((prog, prog_sufix))
         
-        struct_int = self.struct_parse_str_to_int(struct_str)
         struct = np.array(struct_int)
         
         struct = torch.from_numpy(struct).to(self.device).to(torch.long)

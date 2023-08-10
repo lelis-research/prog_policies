@@ -110,10 +110,9 @@ class ProgramSequenceDecoder(nn.Module):
             mlp_input = torch.cat([gru_output.squeeze(0), token_embedding, latent], dim=1)
             pred_token_logits = self.mlp(mlp_input)
             
-            if not self.only_structure: # TODO: remove
-                syntax_mask, grammar_state = self.get_syntax_mask(batch_size, current_tokens, grammar_state)
-                
-                pred_token_logits += syntax_mask
+            syntax_mask, grammar_state = self.get_syntax_mask(batch_size, current_tokens, grammar_state)
+            
+            pred_token_logits += syntax_mask
             
             pred_tokens = self.softmax(pred_token_logits).argmax(dim=-1)
             

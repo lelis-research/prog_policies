@@ -10,7 +10,6 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 from prog_policies.base import BaseDSL, BaseEnvironment
-from prog_policies.latent_space.syntax_checker import SyntaxChecker
 
 from ..utils import init_gru
 from .base_vae import BaseVAE, ModelReturn, ProgramSequenceEncoder, ProgramSequenceDecoder, TrajectorySequenceDecoder
@@ -182,7 +181,7 @@ class DSSVAE(BaseVAE):
         return vae_loss + vq_loss
     
     def forward(self, data_batch: tuple, prog_teacher_enforcing = True,
-                a_h_teacher_enforcing = True) -> tuple:
+                a_h_teacher_enforcing = True, adversarial_pass = False) -> tuple:
         perc_h, a_h, a_h_masks, progs, progs_masks, structs = data_batch
         
         enc_hidden_state = self.prog_encoder(progs, progs_masks)
@@ -191,31 +190,49 @@ class DSSVAE(BaseVAE):
         
         z_cat = torch.cat([z_syn, z_sem], dim=-1)
         
-        pred_progs, pred_progs_logits, pred_progs_masks = self.prog_decoder(
-            z_cat, progs, progs_masks, prog_teacher_enforcing
-        )
+        if adversarial_pass:
+            
+            disc_a_h, disc_a_h_logits, disc_a_h_masks = self.traj_disc(
+                z_syn.detach(), perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
+            )
+            
+            disc_struct, disc_struct_logits, disc_struct_masks = self.struct_disc(
+                z_sem.detach(), structs, progs_masks, prog_teacher_enforcing
+            )
+            
+            return (z_syn, z_sem, None, None, None,
+                    None, None, None,
+                    disc_a_h, disc_a_h_logits, disc_a_h_masks,
+                    None, None, None,
+                    disc_struct, disc_struct_logits, disc_struct_masks)
         
-        rec_a_h, rec_a_h_logits, rec_a_h_masks = self.traj_rec(
-            z_sem, perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
-        )
-        
-        disc_a_h, disc_a_h_logits, disc_a_h_masks = self.traj_disc(
-            z_syn, perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
-        )
+        else:
 
-        rec_struct, rec_struct_logits, rec_struct_masks = self.struct_rec(
-            z_syn, structs, progs_masks, prog_teacher_enforcing
-        )
-        
-        disc_struct, disc_struct_logits, disc_struct_masks = self.struct_disc(
-            z_sem, structs, progs_masks, prog_teacher_enforcing
-        )
-        
-        return (z_syn, z_sem, pred_progs, pred_progs_logits, pred_progs_masks,
-                rec_a_h, rec_a_h_logits, rec_a_h_masks,
-                disc_a_h, disc_a_h_logits, disc_a_h_masks,
-                rec_struct, rec_struct_logits, rec_struct_masks,
-                disc_struct, disc_struct_logits, disc_struct_masks)
+            pred_progs, pred_progs_logits, pred_progs_masks = self.prog_decoder(
+                z_cat, progs, progs_masks, prog_teacher_enforcing
+            )
+            
+            rec_a_h, rec_a_h_logits, rec_a_h_masks = self.traj_rec(
+                z_sem, perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
+            )
+            
+            disc_a_h, disc_a_h_logits, disc_a_h_masks = self.traj_disc(
+                z_syn, perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
+            )
+
+            rec_struct, rec_struct_logits, rec_struct_masks = self.struct_rec(
+                z_syn, structs, progs_masks, prog_teacher_enforcing
+            )
+            
+            disc_struct, disc_struct_logits, disc_struct_masks = self.struct_disc(
+                z_sem, structs, progs_masks, prog_teacher_enforcing
+            )
+            
+            return (z_syn, z_sem, pred_progs, pred_progs_logits, pred_progs_masks,
+                    rec_a_h, rec_a_h_logits, rec_a_h_masks,
+                    disc_a_h, disc_a_h_logits, disc_a_h_masks,
+                    rec_struct, rec_struct_logits, rec_struct_masks,
+                    disc_struct, disc_struct_logits, disc_struct_masks)
         
     def encode_program(self, prog: torch.Tensor):
         if prog.dim() == 1:
@@ -313,7 +330,7 @@ class DSSVAE(BaseVAE):
             progs_masks_flat_combined = torch.max(progs_masks_flat, pred_progs_masks_flat).squeeze()
         
         zero_tensor = torch.tensor([0.0], device=self.device, requires_grad=False)
-        progs_loss, a_h_loss = zero_tensor, zero_tensor
+        progs_loss, rec_a_h_loss, rec_struct_loss, disc_a_h_loss, disc_struct_loss = zero_tensor, zero_tensor, zero_tensor, zero_tensor, zero_tensor
         
         if rec_a_h is not None:
             rec_a_h_loss = loss_fn(rec_a_h_logits[rec_a_h_masks_flat_combined],
@@ -324,11 +341,11 @@ class DSSVAE(BaseVAE):
                                       structs_flat[rec_struct_masks_flat_combined].view(-1))
             
         if disc_a_h is not None:
-            disc_a_h_loss = -loss_fn(disc_a_h_logits[disc_a_h_masks_flat_combined],
+            disc_a_h_loss = loss_fn(disc_a_h_logits[disc_a_h_masks_flat_combined],
                                     a_h_flat[disc_a_h_masks_flat_combined].view(-1))
             
         if disc_struct is not None:
-            disc_struct_loss = -loss_fn(disc_struct_logits[disc_struct_masks_flat_combined],
+            disc_struct_loss = loss_fn(disc_struct_logits[disc_struct_masks_flat_combined],
                                        structs_flat[disc_struct_masks_flat_combined].view(-1))
         
         if pred_progs is not None:
@@ -412,14 +429,25 @@ class DSSVAE(BaseVAE):
             for i, train_batch in enumerate(train_dataloader):
                 
                 optimizer.zero_grad()
+                
+                adv_output = self(train_batch,
+                                  not disable_prog_teacher_enforcing, 
+                                  not disable_a_h_teacher_enforcing,
+                                  adversarial_pass=True)
+                adv_losses, adv_accs = self.get_losses_and_accs(train_batch, adv_output, loss_fn)
+                
+                total_adv_loss = adv_losses.a_h_disc + adv_losses.struct_disc
+                
+                total_adv_loss.backward()
+                optimizer.zero_grad()
 
                 output = self(train_batch,
                               not disable_prog_teacher_enforcing,
                               not disable_a_h_teacher_enforcing)
                 losses, accs = self.get_losses_and_accs(train_batch, output, loss_fn)
                 
-                total_loss = prog_loss_coef * losses.progs_rec +\
-                    losses.a_h_disc + losses.a_h_rec + losses.struct_rec + losses.struct_disc +\
+                total_loss = prog_loss_coef * losses.progs_rec -\
+                    losses.a_h_disc + losses.a_h_rec + losses.struct_rec - losses.struct_disc +\
                     latent_loss_coef * losses.latent
                 
                 total_loss.backward()
@@ -462,8 +490,8 @@ class DSSVAE(BaseVAE):
                                   not disable_a_h_teacher_enforcing)
                     losses, accs = self.get_losses_and_accs(val_batch, output, loss_fn)
                     
-                    total_loss = prog_loss_coef * losses.progs_rec +\
-                        losses.a_h_disc + losses.a_h_rec + losses.struct_rec + losses.struct_disc +\
+                    total_loss = prog_loss_coef * losses.progs_rec -\
+                        losses.a_h_disc + losses.a_h_rec + losses.struct_rec - losses.struct_disc +\
                         latent_loss_coef * losses.latent
                     
                     val_batches_total_losses[i] = total_loss.item()
