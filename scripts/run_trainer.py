@@ -35,7 +35,7 @@ if __name__ == '__main__':
     with open(args.config_path, 'r') as f:
         config = json.load(f)
     
-    log_filename = f'{config.label}_{config["model"]["params"]["model_seed"]}'
+    log_filename = f'{config["label"]}_{config["model"]["params"]["model_seed"]}'
 
     os.makedirs(args.log_folder, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         "dsl": dsl,
         "device": device,
         "logger": logger,
-        "name": config.label,
+        "name": config["label"],
         "env_cls": KarelEnvironment,
         "env_args": config["model"]["env_args"],
         "wandb_args": wandb_args,

@@ -36,9 +36,9 @@ class DSSNoAdvVAE2(BaseVAE):
     """    
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256, logger: Logger = None, name: str = None):
+                 hidden_size = 256, logger: Logger = None, name: str = None, wandb_args: dict = None):
         super().__init__(dsl, device, env_cls, env_args, max_program_length, max_demo_length,
-                         model_seed, hidden_size, logger=logger, name=name)
+                         model_seed, hidden_size, logger=logger, name=name, wandb_args=wandb_args)
         
         self.syn_latent_size = self.hidden_size
         self.sem_latent_size = self.hidden_size
