@@ -24,16 +24,18 @@ class VectorQuantizer(nn.Module):
         self.beta = beta
 
         self.codebook = nn.Embedding(self.K, self.D)
-        self.codebook.weight.data.uniform_(-1 / self.K, 1 / self.K)
+        self.codebook.weight.data.normal_()
     
     def forward(self, latents: torch.Tensor):
         # Compute L2 distance between latents and embedding weights
         dist = torch.sum(latents ** 2, dim=1, keepdim=True) + \
                torch.sum(self.codebook.weight ** 2, dim=1) - \
                2 * torch.matmul(latents, self.codebook.weight.t())  # [B x K]
+               
+        probs = F.softmax(-dist, dim=1)  # [B x K]
 
         # Get the encoding that has the min distance
-        encoding_inds = torch.argmin(dist, dim=1).unsqueeze(1)  # [B, 1]
+        encoding_inds = torch.argmin(probs, dim=1).unsqueeze(1)  # [B, 1]
 
         # Convert to one-hot encodings
         device = latents.device
