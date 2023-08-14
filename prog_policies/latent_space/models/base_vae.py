@@ -4,6 +4,7 @@ from logging import Logger
 import numpy as np
 import torch
 from torch import nn
+import wandb
 
 from prog_policies.base import BaseDSL, BaseEnvironment
 
@@ -244,7 +245,7 @@ class BaseVAE(nn.Module):
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
                  hidden_size = 256, model_params_path: str = None, logger: Logger = None,
-                 name: str = None):
+                 name: str = None, wandb_args: dict = None):
         super().__init__()
         
         if name is None:
@@ -294,6 +295,14 @@ class BaseVAE(nn.Module):
             self.load_state_dict(torch.load(model_params_path, map_location=self.device))
             
         self.logger = logger
+        
+        if wandb_args:
+            self.wandb_run = wandb.init(
+                name=self.name,
+                **wandb_args
+            )
+        else:
+            self.wandb_run = None
     
     def log(self, message: str):
         if self.logger is not None:

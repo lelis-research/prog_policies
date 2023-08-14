@@ -381,6 +381,14 @@ class DSSNoAdvVAE(BaseVAE):
                 f.write(',')
                 f.write(','.join([str(acc) for acc in train_mean_accs]))
                 f.write('\n')
+            
+            if self.wandb_run is not None:
+                self.wandb_run.log({
+                    'epoch': epoch,
+                    'train_total_loss': train_mean_total_loss,
+                    **{'train_' + loss + '_loss': train_mean_losses[i] for i, loss in enumerate(Losses._fields)},
+                    **{'train_' + acc + '_accuracy': train_mean_accs[i] for i, acc in enumerate(Accuracies._fields)}
+                })
                 
             if val_dataloader is not None:
                 self.log(f'Validation epoch {epoch}/{num_epochs}')
@@ -423,6 +431,14 @@ class DSSNoAdvVAE(BaseVAE):
                     f.write(','.join([str(acc) for acc in val_mean_accs]))
                     f.write('\n')
                     
+                if self.wandb_run is not None:
+                    self.wandb_run.log({
+                        'epoch': epoch,
+                        'val_total_loss': val_mean_total_loss,
+                        **{'val_' + loss + '_loss': val_mean_losses[i] for i, loss in enumerate(Losses._fields)},
+                        **{'val_' + acc + '_accuracy': val_mean_accs[i] for i, acc in enumerate(Accuracies._fields)}
+                    })
+                
                 if val_mean_total_loss < best_val_return:
                     self.log(f'New best validation loss: {val_mean_total_loss}')
                     best_val_return = val_mean_total_loss
