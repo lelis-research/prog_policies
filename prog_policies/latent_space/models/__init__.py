@@ -6,6 +6,7 @@ from .leaps_perceptions_vae import LeapsPerceptionsVAE
 from .sketch_vae import SketchVAE
 from .dss_vae import DSSVAE
 from .dss_no_adv_vae import DSSNoAdvVAE
+from .dss_no_adv_vae2 import DSSNoAdvVAE2
 
 def load_model(model_cls_name: str, model_args: dict,
                model_params_path: str = None) -> BaseVAE:
