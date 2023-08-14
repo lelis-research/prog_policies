@@ -111,10 +111,10 @@ class DSSNoAdvVAE(BaseVAE):
                                                  max_program_length, only_structure=True)
         
         # Encoder VAE utils
-        self.encoder_syn_mu = torch.nn.Linear(self.syn_latent_size, self.syn_latent_size)
-        self.encoder_syn_log_sigma = torch.nn.Linear(self.syn_latent_size, self.syn_latent_size)
+        self.encoder_sem_mu = torch.nn.Linear(self.sem_latent_size, self.sem_latent_size)
+        self.encoder_sem_log_sigma = torch.nn.Linear(self.sem_latent_size, self.sem_latent_size)
 
-        self.encoder_sem_quantizer = VectorQuantizer(10000, self.sem_latent_size, 0.25)
+        self.encoder_syn_quantizer = VectorQuantizer(10000, self.syn_latent_size, 0.25)
         
         self.to(self.device)
 
@@ -124,30 +124,30 @@ class DSSNoAdvVAE(BaseVAE):
             enc_hidden_state, [self.syn_latent_size, self.sem_latent_size], dim=-1
         )
         
-        syn_mu = self.encoder_syn_mu(enc_hidden_syn)
-        syn_log_sigma = self.encoder_syn_log_sigma(enc_hidden_syn)
-        syn_sigma = torch.exp(syn_log_sigma)
-        syn_std_z = torch.randn(syn_sigma.size(), device=self.device)
+        q_syn = self.encoder_syn_quantizer(enc_hidden_syn)
         
-        z_syn = syn_mu + syn_sigma * syn_std_z
+        sem_mu = self.encoder_sem_mu(enc_hidden_sem)
+        sem_log_sigma = self.encoder_sem_log_sigma(enc_hidden_sem)
+        sem_sigma = torch.exp(sem_log_sigma)
+        sem_std_z = torch.randn(sem_sigma.size(), device=self.device)
         
-        q_sem = self.encoder_sem_quantizer(enc_hidden_sem)
+        z_sem = sem_mu + sem_sigma * sem_std_z
         
-        self.q_sem = q_sem
-        self.z_sem = enc_hidden_sem
+        self.q_syn = q_syn
+        self.z_syn = enc_hidden_syn
         
-        self.z_syn_mu = syn_mu
-        self.z_syn_sigma = syn_sigma
+        self.z_sem_mu = sem_mu
+        self.z_sem_sigma = sem_sigma
         
-        return z_syn, q_sem
+        return q_syn, z_sem
     
     def get_latent_loss(self):
-        syn_mean_sq = self.z_syn_mu * self.z_syn_mu
-        syn_stddev_sq = self.z_syn_sigma * self.z_syn_sigma
-        vae_loss = 0.5 * torch.mean(syn_mean_sq + syn_stddev_sq - torch.log(syn_stddev_sq) - 1)
+        sem_mean_sq = self.z_sem_mu * self.z_sem_mu
+        sem_stddev_sq = self.z_sem_sigma * self.z_sem_sigma
+        vae_loss = 0.5 * torch.mean(sem_mean_sq + sem_stddev_sq - torch.log(sem_stddev_sq) - 1)
         
-        commitment_loss = F.mse_loss(self.q_sem.detach(), self.z_sem)
-        embedding_loss = F.mse_loss(self.q_sem, self.z_sem.detach())
+        commitment_loss = F.mse_loss(self.q_syn.detach(), self.z_syn)
+        embedding_loss = F.mse_loss(self.q_syn, self.z_syn.detach())
         vq_loss = commitment_loss + self.vq_beta * embedding_loss
         return vae_loss + vq_loss
     
