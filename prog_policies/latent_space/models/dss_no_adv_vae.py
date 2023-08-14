@@ -114,7 +114,7 @@ class DSSNoAdvVAE(BaseVAE):
         self.encoder_syn_mu = torch.nn.Linear(self.syn_latent_size, self.syn_latent_size)
         self.encoder_syn_log_sigma = torch.nn.Linear(self.syn_latent_size, self.syn_latent_size)
 
-        self.encoder_sem_quantizer = VectorQuantizer(10000, self.hidden_size, 0.25)
+        self.encoder_sem_quantizer = VectorQuantizer(10000, self.sem_latent_size, 0.25)
         
         self.to(self.device)
 
@@ -146,8 +146,8 @@ class DSSNoAdvVAE(BaseVAE):
         syn_stddev_sq = self.z_syn_sigma * self.z_syn_sigma
         vae_loss = 0.5 * torch.mean(syn_mean_sq + syn_stddev_sq - torch.log(syn_stddev_sq) - 1)
         
-        commitment_loss = F.mse_loss(self.q_sem, self.z_sem.detach())
-        embedding_loss = F.mse_loss(self.q_sem.detach(), self.z_sem)
+        commitment_loss = F.mse_loss(self.q_sem.detach(), self.z_sem)
+        embedding_loss = F.mse_loss(self.q_sem, self.z_sem.detach())
         vq_loss = commitment_loss + self.vq_beta * embedding_loss
         return vae_loss + vq_loss
     
@@ -398,7 +398,7 @@ class DSSNoAdvVAE(BaseVAE):
                     output = self(val_batch,
                                   not disable_prog_teacher_enforcing,
                                   not disable_a_h_teacher_enforcing)
-                    losses, accs = self.get_losses_and_accs(train_batch, output, loss_fn)
+                    losses, accs = self.get_losses_and_accs(val_batch, output, loss_fn)
                     
                     total_loss = prog_loss_coef * losses.progs_rec +\
                         losses.a_h_rec + losses.struct_rec +\
