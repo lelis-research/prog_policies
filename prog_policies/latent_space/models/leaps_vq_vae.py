@@ -17,8 +17,10 @@ from .base_vae import BaseVAE, ModelReturn
 
 class VectorQuantizer(nn.Module):
     
-    def __init__(self, num_embeddings: int, embedding_dim: int, beta: float = 0.25):
+    def __init__(self, device: torch.device, num_embeddings: int, embedding_dim: int,
+                 beta: float = 0.25):
         super().__init__()
+        self.vq_loss = torch.tensor(0.0, device=device, requires_grad=True)
         self.K = num_embeddings
         self.D = embedding_dim
         self.beta = beta
@@ -45,10 +47,19 @@ class VectorQuantizer(nn.Module):
         # Quantize the latents
         quantized_latents = torch.matmul(encoding_one_hot, self.codebook.weight)  # [B x D]
 
+        # Compute the VQ Losses
+        commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
+        embedding_loss = F.mse_loss(quantized_latents, latents.detach())
+
+        self.vq_loss = commitment_loss * self.beta + embedding_loss
+
         # Add the residue back to the latents
         quantized_latents = latents + (quantized_latents - latents).detach()
 
         return quantized_latents
+    
+    def get_loss(self):
+        return self.vq_loss
 
 
 class Accuracies(NamedTuple):
