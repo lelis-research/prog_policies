@@ -6,6 +6,7 @@ from .leaps_perceptions_vae import LeapsPerceptionsVAE
 from .sketch_vae import SketchVAE
 from .dss_vae import DSSVAE
 from .dss_vae_cont import DSSVAECont
+from .dss_vae_cont2 import DSSVAECont2
 from .dss_no_adv_vae import DSSNoAdvVAE
 from .dss_no_adv_vae2 import DSSNoAdvVAE2
 
