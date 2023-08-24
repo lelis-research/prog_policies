@@ -201,11 +201,11 @@ class DSSVAECont(BaseVAE):
         if adversarial_pass:
             
             disc_a_h, disc_a_h_logits, disc_a_h_masks = self.traj_disc(
-                z_syn.detach(), perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
+                z_syn, perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
             )
             
             disc_struct, disc_struct_logits, disc_struct_masks = self.struct_disc(
-                z_sem.detach(), structs, progs_masks, prog_teacher_enforcing
+                z_sem, structs, progs_masks, prog_teacher_enforcing
             )
             
             return (z_syn, z_sem, None, None, None,
@@ -225,7 +225,7 @@ class DSSVAECont(BaseVAE):
             )
             
             disc_a_h, disc_a_h_logits, disc_a_h_masks = self.traj_disc(
-                z_syn, perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
+                z_syn.detach(), perc_h, a_h, a_h_masks, a_h_teacher_enforcing, True
             )
 
             rec_struct, rec_struct_logits, rec_struct_masks = self.struct_rec(
@@ -233,7 +233,7 @@ class DSSVAECont(BaseVAE):
             )
             
             disc_struct, disc_struct_logits, disc_struct_masks = self.struct_disc(
-                z_sem, structs, progs_masks, prog_teacher_enforcing
+                z_sem.detach(), structs, progs_masks, prog_teacher_enforcing
             )
             
             return (z_syn, z_sem, pred_progs, pred_progs_logits, pred_progs_masks,
@@ -363,14 +363,13 @@ class DSSVAECont(BaseVAE):
                 progs_loss = loss_fn(pred_progs_logits[progs_masks_flat_combined],
                                     progs_flat[progs_masks_flat_combined].view(-1))
 
-            with torch.no_grad():
-                if disc_a_h is not None:
-                    disc_a_h_loss = loss_fn(disc_a_h_logits[disc_a_h_masks_flat_combined],
-                                            a_h_flat[disc_a_h_masks_flat_combined].view(-1))
-                    
-                if disc_struct is not None:
-                    disc_struct_loss = loss_fn(disc_struct_logits[disc_struct_masks_flat_combined],
-                                            structs_flat[disc_struct_masks_flat_combined].view(-1))
+            if disc_a_h is not None:
+                disc_a_h_loss = loss_fn(disc_a_h_logits[disc_a_h_masks_flat_combined],
+                                        a_h_flat[disc_a_h_masks_flat_combined].view(-1))
+                
+            if disc_struct is not None:
+                disc_struct_loss = loss_fn(disc_struct_logits[disc_struct_masks_flat_combined],
+                                        structs_flat[disc_struct_masks_flat_combined].view(-1))
 
             latent_loss = self.get_latent_loss()
         
