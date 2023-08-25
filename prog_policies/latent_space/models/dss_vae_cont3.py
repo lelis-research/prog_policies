@@ -46,8 +46,8 @@ class DSSVAECont3(BaseVAE):
         super().__init__(dsl, device, env_cls, env_args, max_program_length, max_demo_length,
                          model_seed, hidden_size, logger=logger, name=name, wandb_args=wandb_args)
         
-        self.syn_latent_size = self.hidden_size
-        self.sem_latent_size = self.hidden_size
+        self.syn_latent_size = 64
+        self.sem_latent_size = 128
         
         # Input: rho_i (T). Output: enc(rho_i) (T).
         token_encoder = nn.Embedding(self.num_program_tokens, self.num_program_tokens)
