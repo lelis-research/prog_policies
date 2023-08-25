@@ -8,7 +8,7 @@ import wandb
 
 from prog_policies.base import BaseDSL, BaseEnvironment
 
-from ..utils import init, EnvironmentBatch
+from ..utils import init, init_gru, EnvironmentBatch
 from ..syntax_checker import SyntaxChecker
 
 
@@ -28,6 +28,7 @@ class ProgramSequenceEncoder(nn.Module):
         super().__init__()
         self.token_encoder = token_encoder
         self.gru = gru
+        init_gru(self.gru)
         
     def forward(self, progs: torch.Tensor, progs_mask: torch.Tensor):
         if len(progs.shape) == 3:
@@ -63,6 +64,7 @@ class ProgramSequenceDecoder(nn.Module):
         self.syntax_checker = SyntaxChecker(dsl, self.device, only_structure=only_structure)
         self.only_structure = only_structure
         self.max_program_length = max_program_length
+        init_gru(self.gru)
         
     def get_syntax_mask(self, batch_size: int, current_tokens: torch.Tensor, grammar_state: list):
         out_of_syntax_list = []
@@ -148,6 +150,7 @@ class TrajectorySequenceDecoder(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
         self.max_demo_length = max_demo_length
         self.num_agent_actions = num_agent_actions
+        init_gru(self.gru)
     
     def env_init(self, states: torch.Tensor):
         states_np = states.detach().cpu().numpy().astype(np.bool_)
