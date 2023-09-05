@@ -1,5 +1,6 @@
 from .base_search import BaseSearch
 from .latent_cem import LatentCEM
+from .disentangled_latent_cem import DisentangledLatentCEM
 from .simulated_annealing import SimulatedAnnealing
 from .simulated_annealing_credit_assignment import SimulatedAnnealingWithCreditAssignment
 from .simulated_annealing_with_simplification import SimulatedAnnealingWithSimplification
