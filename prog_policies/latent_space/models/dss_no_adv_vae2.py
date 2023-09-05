@@ -187,12 +187,16 @@ class DSSNoAdvVAE2(BaseVAE):
         
         prog_mask = (prog != self.num_program_tokens - 1)
         
-        z = self.encode(prog, prog_mask)
+        enc_hidden_state = self.prog_encoder(prog, prog_mask)
         
-        return z
+        z_syn, z_sem = self.sample_latent_vector(enc_hidden_state)
+        
+        return z_syn, z_sem
     
-    def decode_vector(self, z: torch.Tensor):
-        pred_progs, _, pred_progs_masks = self.decode(z, None, None, False)
+    def decode_vector(self, z_syn: torch.Tensor, z_sem: torch.Tensor):
+        z_cat = torch.cat([z_syn, z_sem], dim=-1)
+        
+        pred_progs, _, pred_progs_masks = self.prog_decoder(z_cat, None, None, False)
         
         pred_progs_tokens = []
         for prog, prog_mask in zip(pred_progs, pred_progs_masks):
