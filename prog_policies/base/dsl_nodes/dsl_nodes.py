@@ -93,7 +93,7 @@ class While(StatementNode, OperationNode):
             for previous_env in self.previous_envs:
                 if env == previous_env:
                     env.crash()
-            self.previous_envs.append(copy.copy(env))
+            self.previous_envs.append(copy.deepcopy(env))
             if env.is_crashed(): return     # To avoid infinite loops
             yield from self.children[1].run_generator(env)
 
