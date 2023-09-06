@@ -123,6 +123,18 @@ class KarelEnvironment(BaseEnvironment):
     def get_state(self):
         return self.state
     
+    def __copy__(self):
+        obj = copy.copy(self)
+        obj.markers_grid = copy.deepcopy(self.markers_grid)
+        return obj
+    
+    def __eq__(self, other: "KarelEnvironment"):
+        this_r, this_c, this_d = self.get_hero_pos()
+        other_r, other_c, other_d = other.get_hero_pos()
+        if this_r != other_r or this_c != other_c or this_d != other_d:
+            return False
+        return np.array_equal(self.markers_grid, other.markers_grid)
+    
     def get_hero_pos(self):
         return self.hero_pos
     
