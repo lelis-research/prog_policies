@@ -88,7 +88,7 @@ class DisentangledLatentCEM(BaseSearch):
         
         latents = torch.stack(latents)
         
-        programs_tokens = self.latent_model.decode_vector(latents[:, 0], latents[:, 1])
+        programs_tokens = self.latent_model.decode_vector(latents[:, 1], latents[:, 0])
         
         rewards = self.execute_programs(programs_tokens)
         
@@ -113,56 +113,53 @@ class DisentangledLatentCEM(BaseSearch):
 
         self.log(f'Iteration {self.current_iteration} sem elite mean: {sem_mean_elite_reward}, syn elite mean: {syn_mean_elite_reward}')
 
-        if sem_mean_elite_reward.cpu().numpy() <= self.sem_best_mean_elite_reward_since_restart:
+        if sem_mean_elite_reward.cpu().numpy() == self.sem_best_mean_elite_reward_since_restart:
             self.sem_counter_for_restart += 1
         else:
             self.sem_counter_for_restart = 0
             self.sem_best_mean_elite_reward_since_restart = sem_mean_elite_reward.cpu().numpy()
             
-        if syn_mean_elite_reward.cpu().numpy() <= self.syn_best_mean_elite_reward_since_restart:
+        if syn_mean_elite_reward.cpu().numpy() == self.syn_best_mean_elite_reward_since_restart:
             self.syn_counter_for_restart += 1
         else:
             self.syn_counter_for_restart = 0
             self.syn_best_mean_elite_reward_since_restart = syn_mean_elite_reward.cpu().numpy()
             
-        if self.sem_counter_for_restart >= self.restart_timeout and self.restart_timeout > 0:
+        if (self.sem_counter_for_restart >= self.restart_timeout or self.syn_counter_for_restart >= self.restart_timeout) and self.restart_timeout > 0:
             self.sem_population = self.init_sem_population()
             self.sem_best_mean_elite_reward_since_restart = -float('inf')
             self.sem_counter_for_restart = 0
-            self.log('Restarted sem population.')
+            self.syn_population = self.init_syn_population()
+            self.syn_best_mean_elite_reward_since_restart = -float('inf')
+            self.syn_counter_for_restart = 0
+            self.log('Restarted both populations.')
         else:
-            new_indices = torch.ones(sem_elite_population.size(0), device=self.torch_device).multinomial(
+            sem_new_indices = torch.ones(sem_elite_population.size(0), device=self.torch_device).multinomial(
                 self.population_size, generator=self.torch_rng, replacement=True)
             if self.reduce_to_mean:
                 sem_elite_population = torch.mean(sem_elite_population, dim=0).repeat(n_elite, 1)
                 self.sigma = torch.std(sem_elite_population)
-            new_population = []
-            for index in new_indices:
+            sem_new_population = []
+            for index in sem_new_indices:
                 sample = sem_elite_population[index]
-                new_population.append(
+                sem_new_population.append(
                     sample + self.sigma * torch.randn(self.latent_model.sem_latent_size,
                                                       generator=self.torch_rng,
                                                       device=self.torch_device)
                 )
-            self.sem_population = torch.stack(new_population)
-        
-        if self.syn_counter_for_restart >= self.restart_timeout and self.restart_timeout > 0:
-            self.syn_population = self.init_syn_population()
-            self.syn_best_mean_elite_reward_since_restart = -float('inf')
-            self.syn_counter_for_restart = 0
-            self.log('Restarted syn population.')
-        else:
-            new_indices = torch.ones(syn_elite_population.size(0), device=self.torch_device).multinomial(
+            self.sem_population = torch.stack(sem_new_population)
+            
+            syn_new_indices = torch.ones(syn_elite_population.size(0), device=self.torch_device).multinomial(
                 self.population_size, generator=self.torch_rng, replacement=True)
             if self.reduce_to_mean:
                 syn_elite_population = torch.mean(syn_elite_population, dim=0).repeat(n_elite, 1)
                 self.sigma = torch.std(syn_elite_population)
-            new_population = []
-            for index in new_indices:
+            syn_new_population = []
+            for index in syn_new_indices:
                 sample = syn_elite_population[index]
-                new_population.append(
+                syn_new_population.append(
                     sample + self.sigma * torch.randn(self.latent_model.syn_latent_size,
                                                       generator=self.torch_rng,
                                                       device=self.torch_device)
                 )
-            self.syn_population = torch.stack(new_population)
+            self.syn_population = torch.stack(syn_new_population)

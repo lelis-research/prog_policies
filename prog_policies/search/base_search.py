@@ -1,11 +1,14 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from datetime import datetime
 from glob import glob
 import json
+import logging
 import os
 import pickle
 from logging import Logger
 from multiprocessing import Pool
+import sys
 
 import numpy as np
 import torch
@@ -24,9 +27,9 @@ class BaseSearch(ABC):
                  latent_model_cls_name: str = None, latent_model_args: dict = {},
                  latent_model_params_path: str = None, search_seed: int = 1,
                  checkpoint_frequency: int = 100, base_output_folder: str = 'output',
-                 base_checkpoint_folder: str = 'checkpoints', logger: Logger = None,
-                 n_proc: int = 1, only_continue_from_checkpoint: bool = False,
-                 method_label: str = None, wandb_args: dict = None):
+                 base_checkpoint_folder: str = 'checkpoints', log_folder: str = None,
+                 n_proc: int = 1,
+                 method_label: str = None, wandb_args: dict = None, use_checkpoint: bool = True):
         self.dsl = dsl
         task_cls = get_task_cls(task_cls_name)
         self.task_envs = [task_cls(env_args, i) for i in range(number_executions)]
@@ -64,8 +67,18 @@ class BaseSearch(ABC):
         self.search_seed = search_seed
         self.torch_device = device
         self.checkpoint_frequency = checkpoint_frequency
-        self.logger = logger
-        self.only_continue_from_checkpoint = only_continue_from_checkpoint
+        if log_folder is not None:
+            log_filename = f'{method_label}_{task_specifier}_{search_seed}'
+            os.makedirs(log_folder, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_handlers = [
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler(os.path.join(log_folder, f'{log_filename}_{timestamp}.txt'), mode='w')
+            ]
+            logging.basicConfig(handlers=log_handlers, format='%(asctime)s: %(message)s', level=logging.INFO)
+            self.logger = logging.getLogger()
+        else:
+            self.logger = None
         if wandb_args:
             group_name = f'{method_label}_{task_specifier}'
             run_name = f'{group_name}_{search_seed}'
@@ -90,6 +103,7 @@ class BaseSearch(ABC):
             )
         else:
             self.wandb_run = None
+        self.use_checkpoint = use_checkpoint
     
     @abstractmethod
     def parse_method_args(self, search_method_args: dict):
@@ -142,7 +156,7 @@ class BaseSearch(ABC):
         self.init_search_state()
         checkpoints = glob(os.path.join(self.checkpoint_folder, f'seed_{self.search_seed}_iter_*.pkl'))
         # Load checkpoint if exists
-        if len(checkpoints) > 0:
+        if len(checkpoints) > 0 and self.use_checkpoint:
             checkpoints.sort(key=os.path.getmtime)
             checkpoint = checkpoints[-1]
             with open(checkpoint, 'rb') as f:
@@ -151,8 +165,6 @@ class BaseSearch(ABC):
             self.log(f'Loaded checkpoint {checkpoint}')
             self.current_iteration += 1
         else:
-            if self.only_continue_from_checkpoint:
-                return '', -np.inf, 0
             self.init_output()
         
         if self.n_proc > 1:

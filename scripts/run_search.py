@@ -18,7 +18,6 @@ if __name__ == '__main__':
     
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     
-    parser.add_argument('--search_method', default='LatentCEM', help='Name of search method class')
     parser.add_argument('--search_args_path', default='sample_args/search/latent_cem.json', help='Arguments path for search method')
     parser.add_argument('--log_folder', default='logs', help='Folder to save logs')
     parser.add_argument('--search_seed', type=int, help='Seed for search method')
@@ -31,20 +30,7 @@ if __name__ == '__main__':
         search_args = json.load(f)
     
     if args.search_seed is not None:
-        search_args['search_seed'] = args.search_seed
-    
-    log_filename = f'{args.search_method}_{search_args["task_cls_name"]}_{search_args["search_seed"]}'
-
-    os.makedirs(args.log_folder, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_handlers = [
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(args.log_folder, f'{log_filename}_{timestamp}.txt'), mode='w')
-    ]
-    
-    logging.basicConfig(handlers=log_handlers, format='%(asctime)s: %(message)s', level=logging.INFO)
-    
-    logger = logging.getLogger()
+        search_args['search_method_args']['search_seed'] = args.search_seed
     
     if args.wandb_project:
         wandb_args = {
@@ -58,8 +44,15 @@ if __name__ == '__main__':
     
     dsl = KarelDSL()
     
-    search_cls = get_search_cls(args.search_method)
+    search_cls = get_search_cls(search_args["search_method_cls_name"])
     
-    searcher = search_cls(dsl, KarelEnvironment, device, logger=logger, wandb_args=wandb_args, **search_args)
+    searcher = search_cls(
+        dsl,
+        KarelEnvironment,
+        device,
+        log_folder=args.log_folder,
+        wandb_args=wandb_args,
+        **search_args["search_method_args"]
+    )
     
     searcher.search()
