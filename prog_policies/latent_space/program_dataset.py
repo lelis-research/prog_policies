@@ -161,7 +161,7 @@ class ProgramPerceptionsDataset2(ProgramDataset):
         for i in range(len(data_a_h)):
             a_h_expanded[i, 1:len(data_a_h[i])+1] = data_a_h[i]
             perc_h_expanded[i, :len(data_a_h[i])+1] = data_perc_h[i]
-            perc_h_expanded[i, len(data_a_h[i])+1:] = data_perc_h[i][-1] * (self.max_demo_length - len(data_a_h[i]) + 1)
+            perc_h_expanded[i, len(data_a_h[i])+1:] = np.array(data_perc_h[i][-1]) * (self.max_demo_length - len(data_a_h[i]) + 1)
         
         perc_h = torch.tensor(perc_h_expanded, device=self.device, dtype=torch.float32)
         a_h = torch.tensor(a_h_expanded, device=self.device, dtype=torch.long)
