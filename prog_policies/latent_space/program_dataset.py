@@ -155,7 +155,7 @@ class ProgramPerceptionsDataset2(ProgramDataset):
         struct = torch.cat((struct, struct_sufix))
         
         a_h_expanded = np.ones((len(data_a_h), self.max_demo_length), dtype=int) * (self.action_nop)
-        perc_h_expanded = np.zeros((len(data_perc_h), self.max_demo_length, *data_perc_h[0][0].shape), dtype=bool)
+        perc_h_expanded = np.zeros((len(data_perc_h), self.max_demo_length, len(data_perc_h[0][0])), dtype=bool)
 
         # Add no-op actions for empty demonstrations
         for i in range(len(data_a_h)):
