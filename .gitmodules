@@ -1,0 +1,3 @@
+[submodule "leaps"]
+	path = leaps
+	url = https://github.com/Tales-Carvalho/leaps
