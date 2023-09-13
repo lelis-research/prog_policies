@@ -4,6 +4,7 @@ from .latent_cem import LatentCEM
 from .latent_cem_leaps import LatentCEM_LEAPS
 from .disentangled_latent_cem import DisentangledLatentCEM
 from .simulated_annealing import SimulatedAnnealing
+from .simulated_annealing_leaps import SimulatedAnnealing_LEAPS
 from .simulated_annealing_constraint import SimulatedAnnealingWithConstraint
 from .simulated_annealing_credit_assignment import SimulatedAnnealingWithCreditAssignment
 from .simulated_annealing_with_simplification import SimulatedAnnealingWithSimplification
