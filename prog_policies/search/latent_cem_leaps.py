@@ -19,10 +19,12 @@ class LatentCEM_LEAPS(LatentCEM):
                           env_cls: type[BaseEnvironment] = None, env_args: dict = None):
         parser = CustomArgumentParser()
         parser.add_argument('-c', '--configfile')
-        parser.set_defaults(configfile='leaps/pretrain/leaps_harvester.py')
+        parser.set_defaults(configfile='leaps/pretrain/cfg.py')
         args, _ = parser.parse_known_args()
         _, _, args.dsl_tokens, _ = fetch_mapping('leaps/mapping_karel2prl.txt')
         args.use_simplified_dsl = False
+        args.device = 'cpu'
+        args.num_lstm_cell_units = 256
         config = args_to_dict(args)
         args.task_file = config['rl']['envs']['executable']['task_file']
         args.grammar = config['dsl']['grammar']
