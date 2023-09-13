@@ -26,5 +26,5 @@
     "number_executions": 16,
     "search_seed": 1,
     "checkpoint_frequency": 25,
-    "multiprocessing": true
+    "n_proc": 4
 }
