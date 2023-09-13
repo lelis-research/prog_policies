@@ -1,5 +1,5 @@
 {
-    "search_method_cls_name": "SimulatedAnnealing",
+    "search_method_cls_name": "SimulatedAnnealingWithConstraint",
     "search_method_args": {
         "task_cls_name": "Harvester",
         "env_args": {
