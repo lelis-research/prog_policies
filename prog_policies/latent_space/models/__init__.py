@@ -2,6 +2,7 @@ import torch
 
 from .base_vae import BaseVAE
 from .leaps_vae import LeapsVAE
+from .leaps_vq_vae import LeapsVQVAE
 from .leaps_perceptions_vae import LeapsPerceptionsVAE
 from .sketch_vae import SketchVAE
 from .dss_vae import DSSVAE
