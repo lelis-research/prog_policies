@@ -1,0 +1,39 @@
+{
+    "label": "LEAPS-VQVAE-256",
+    "dataloader": {
+        "dataset_path": "data/leaps_dataset.pkl",
+        "data_class_name": "ProgramDataset",
+        "max_program_length": 45,
+        "max_demo_length": 20,
+        "batch_size": 32,
+        "train_ratio": 0.8,
+        "val_ratio": 0.1,
+        "data_seed": 1
+    },
+    "model": {
+        "class": "LeapsVQVAE",
+        "env_args": {
+            "env_height": 8,
+            "env_width": 8,
+            "leaps_behaviour": true
+        },
+        "params": {
+            "max_program_length": 45,
+            "max_demo_length": 20,
+            "model_seed": 1,
+            "hidden_size": 256,
+            "vq_dim": 64,
+            "vq_size": 50000
+        },
+        "trainer": {
+            "prog_loss_coef": 1.0,
+            "a_h_loss_coef": 1.0,
+            "latent_loss_coef": 1.0,
+            "disable_prog_teacher_enforcing": false,
+            "disable_a_h_teacher_enforcing": false,
+            "optim_lr": 5e-4,
+            "save_params_each_epoch": false,
+            "num_epochs": 100
+        }
+    }
+}

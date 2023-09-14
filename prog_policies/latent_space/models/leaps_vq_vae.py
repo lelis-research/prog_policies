@@ -77,7 +77,8 @@ class Losses(NamedTuple):
 class LeapsVQVAE(BaseVAE):
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256, logger: Logger = None, name: str = None, wandb_args: dict = None):
+                 hidden_size = 256, vq_dim = 64, vq_size = 50000, logger: Logger = None,
+                 name: str = None, wandb_args: dict = None):
         super().__init__(dsl, device, env_cls, env_args, max_program_length, max_demo_length,
                          model_seed, hidden_size, logger=logger, name=name, wandb_args=wandb_args)
         
@@ -126,12 +127,14 @@ class LeapsVQVAE(BaseVAE):
         )
         
         # Encoder VAE utils
-        self.quantizer = VectorQuantizer(self.device, 10000, self.hidden_size, 0.25)
+        self.enc_linear = nn.Linear(self.hidden_size, vq_dim)
+        self.quantizer = VectorQuantizer(self.device, vq_size, vq_dim, 0.25)
+        self.dec_linear = nn.Linear(vq_dim, self.hidden_size)
         
         self.to(self.device)
 
     def sample_latent_vector(self, enc_hidden_state: torch.Tensor) -> torch.Tensor:
-        return self.quantizer(enc_hidden_state)
+        return self.quantizer(self.enc_linear(enc_hidden_state))
     
     def get_latent_loss(self):
         return self.quantizer.get_loss()
@@ -144,11 +147,13 @@ class LeapsVQVAE(BaseVAE):
         
         z = self.sample_latent_vector(enc_hidden_state)
         
+        z_dec = self.dec_linear(z)
+        
         pred_progs, pred_progs_logits, pred_progs_masks = self.prog_decoder(
-            z, progs, progs_masks, prog_teacher_enforcing
+            z_dec, progs, progs_masks, prog_teacher_enforcing
         )
         pred_a_h, pred_a_h_logits, pred_a_h_masks = self.traj_rec(
-            z, s_h, a_h, a_h_masks, a_h_teacher_enforcing
+            z_dec, s_h, a_h, a_h_masks, a_h_teacher_enforcing
         )
         
         return ModelReturn(z, pred_progs, pred_progs_logits, pred_progs_masks,
