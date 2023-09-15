@@ -1,0 +1,32 @@
+{
+    "search_method_cls_name": "LatentCEM_HPRL",
+    "search_method_args": {
+        "exp_name": "search_debug",
+        "task_cls_name": "Harvester",
+        "env_args": {
+            "env_height": 8,
+            "env_width": 8,
+            "crashable": true,
+            "leaps_behaviour": false,
+            "max_calls": 10000
+        },
+        "search_method_args": {
+            "population_size": 256,
+            "elitism_rate": 0.1,
+            "restart_timeout": 5,
+            "initial_sigma": 0.2,
+            "reduce_to_mean": false 
+        },
+        "latent_model_cls_name": "ProgramVAE",
+        "latent_model_args": {
+            "seed": 1
+        },
+        "latent_model_params_path": "hprl/pretrain/output_dir_new_vae_L40_1m_30epoch_20230104/LEAPSL_tanh_epoch30_L40_1m_h64_u256_option_latent_p1_gru_linear_cuda8-handwritten-123-20230111-095929/best_valid_params.ptp",
+        "max_evaluations": 1e6,
+        "number_executions": 16,
+        "search_seed": 1,
+        "checkpoint_frequency": 25,
+        "n_proc": 4,
+        "use_checkpoint": false
+    }
+}
