@@ -1,8 +1,7 @@
 from __future__ import annotations
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+import os
 import sys
-import numpy as np
-from tqdm import tqdm
 from multiprocessing import Pool
 
 sys.path.append('.')
@@ -65,14 +64,13 @@ if __name__ == '__main__':
     
     task_cls = get_task_cls(args.task)
     task_envs = [task_cls(env_args, i) for i in range(n_env)]
-        
+    
     for search_space, search_space_label in zip(search_spaces, search_spaces_labels):
-        rewards = []
+        os.makedirs(f'output/rewards_{search_space_label}_{args.task}', exist_ok=True)
         def f(seed):
-            return stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations)
+            r = stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations)
+            with open(f'output/rewards_{search_space_label}_{args.task}/{seed}.csv', 'w') as f:
+                f.write(str(r))
         with Pool() as pool:
-            rewards = pool.map(f, range(n_tries))
-        print(f'{search_space_label} in {args.task}: {np.mean(rewards)}')
-        with open(f'output/rewards_{search_space_label}_{args.task}.csv', 'w') as f:
-            f.write('\n'.join([str(r) for r in rewards]))
+            pool.map(f, range(n_tries))
         
