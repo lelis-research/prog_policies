@@ -62,6 +62,10 @@ if __name__ == '__main__':
         "max_calls": 10000
     }
     
+    if args.task == "CleanHouse":
+        env_args["env_height"] = 14
+        env_args["env_width"] = 22
+    
     task_cls = get_task_cls(args.task)
     task_envs = [task_cls(env_args, i) for i in range(n_env)]
     
