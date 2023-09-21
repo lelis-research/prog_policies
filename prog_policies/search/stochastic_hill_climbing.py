@@ -97,10 +97,15 @@ class StochasticHillClimbing(BaseSearch):
                 child_instance.parent = node_to_mutate.parent
     
     def mutate_current_program(self) -> dsl_nodes.Program:
-        mutated_program = copy.deepcopy(self.current_program)
+        accepted = False
+        while not accepted:
+            mutated_program = copy.deepcopy(self.current_program)
         
-        node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
-        self.mutate_node(node_to_mutate)
+            node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
+            self.mutate_node(node_to_mutate)
+            
+            if mutated_program.get_size() <= 20:
+                accepted = True
         
         return mutated_program
     
