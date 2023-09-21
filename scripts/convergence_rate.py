@@ -18,10 +18,12 @@ def evaluate_program(program: dsl_nodes.Program, task_envs: list[BaseTask]) -> f
     return sum_reward / len(task_envs)
 
 def stochastic_hill_climbing(search_space: BaseSearchSpace, task_envs: list[BaseTask],
-                             seed = None, n_iterations: int = 1000) -> float:
+                             seed = None, n_iterations: int = 1000) -> list[float]:
     search_space.initialize_program(seed)
     current_program = search_space.get_current_program()
+    rewards = []
     best_reward = evaluate_program(current_program, task_envs)
+    rewards.append(best_reward)
     for _ in range(n_iterations):
         search_space.mutate_current_program()
         program = search_space.get_current_program()
@@ -30,13 +32,14 @@ def stochastic_hill_climbing(search_space: BaseSearchSpace, task_envs: list[Base
             best_reward = reward
         else:
             search_space.rollback_mutation()
-    return best_reward
+        rewards.append(best_reward)
+    return rewards
 
 if __name__ == '__main__':
     
     n_env = 32
     n_search_iterations = 1000
-    n_tries = 100
+    n_tries = 1000
     
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     
@@ -74,7 +77,7 @@ if __name__ == '__main__':
         def f(seed):
             r = stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations)
             with open(f'output/rewards_{search_space_label}_{args.task}/{seed}.csv', 'w') as f:
-                f.write(str(r))
+                f.write(",".join(map(str, r)))
         with Pool() as pool:
             pool.map(f, range(n_tries))
         
