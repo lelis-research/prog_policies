@@ -1,4 +1,5 @@
 from __future__ import annotations
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 import sys
 import numpy as np
 from tqdm import tqdm
@@ -38,6 +39,12 @@ if __name__ == '__main__':
     n_search_iterations = 1000
     n_tries = 100
     
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    
+    parser.add_argument('task', help='Name of the task class')
+    
+    args = parser.parse_args()
+    
     dsl = KarelDSL()
     search_spaces = [
         ProgrammaticSpace(dsl),
@@ -48,19 +55,6 @@ if __name__ == '__main__':
         'latent'
     ]
     
-    tasks = [
-        'StairClimber',
-        'Maze',
-        'TopOff',
-        'FourCorners',
-        'Harvester',
-        'CleanHouse',
-        'DoorKey',
-        'OneStroke',
-        'Seeder',
-        'Snake'
-    ]
-    
     env_args = {
         "env_height": 8,
         "env_width": 8,
@@ -69,17 +63,16 @@ if __name__ == '__main__':
         "max_calls": 10000
     }
     
-    for task_cls_name in tasks:
-        task_cls = get_task_cls(task_cls_name)
-        task_envs = [task_cls(env_args, i) for i in range(n_env)]
+    task_cls = get_task_cls(args.task)
+    task_envs = [task_cls(env_args, i) for i in range(n_env)]
         
-        for search_space, search_space_label in zip(search_spaces, search_spaces_labels):
-            rewards = []
-            def f(seed):
-                return stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations)
-            with Pool() as pool:
-                rewards = pool.map(f, range(n_tries))
-            print(f'{search_space_label} in {task_cls_name}: {np.mean(rewards)}')
-            with open(f'output/rewards_{search_space_label}_{task_cls_name}.csv', 'w') as f:
-                f.write('\n'.join([str(r) for r in rewards]))
+    for search_space, search_space_label in zip(search_spaces, search_spaces_labels):
+        rewards = []
+        def f(seed):
+            return stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations)
+        with Pool() as pool:
+            rewards = pool.map(f, range(n_tries))
+        print(f'{search_space_label} in {args.task}: {np.mean(rewards)}')
+        with open(f'output/rewards_{search_space_label}_{args.task}.csv', 'w') as f:
+            f.write('\n'.join([str(r) for r in rewards]))
         
