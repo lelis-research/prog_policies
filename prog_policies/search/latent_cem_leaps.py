@@ -17,6 +17,7 @@ class LatentCEM_LEAPS(LatentCEM):
     
     def load_latent_model(self, latent_model_cls_name: str, latent_model_args: dict, latent_model_params_path: str,
                           env_cls: type[BaseEnvironment] = None, env_args: dict = None):
+        torch.set_num_threads(1)
         parser = CustomArgumentParser()
         parser.add_argument('-c', '--configfile')
         parser.set_defaults(configfile='leaps/pretrain/cfg.py')
