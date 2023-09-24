@@ -89,11 +89,11 @@ if __name__ == '__main__':
     task_envs = [task_cls(env_args, i) for i in range(n_env)]
     
     for search_space, search_space_label in zip(search_spaces, search_spaces_labels):
-        os.makedirs(f'output/rewards_{search_space_label}_k{args.k}_{args.task}', exist_ok=True)
         def f(seed):
             r = stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations, args.k)
-            with open(f'output/rewards_{search_space_label}_k{args.k}_{args.task}/{seed}.csv', 'w') as f:
-                f.write(",".join(map(str, r)))
+            return r
         with Pool() as pool:
-            pool.map(f, range(n_tries))
-        
+            rewards = pool.map(f, range(n_tries))
+        with open(f'output/rewards_{search_space_label}_k{args.k}_{args.task}.csv', 'w') as f:
+            for reward in rewards:
+                f.write(','.join([str(r) for r in reward]) + '\n')
