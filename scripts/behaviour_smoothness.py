@@ -8,7 +8,7 @@ sys.path.append('.')
 
 from prog_policies.base import dsl_nodes
 from prog_policies.karel import KarelDSL, KarelEnvironment, KarelStateGenerator
-from prog_policies.search_space import BaseSearchSpace, ProgrammaticSpace, LatentSpace
+from prog_policies.search_space import BaseSearchSpace, ProgrammaticSpace, LatentSpace, LatentSpace2
 
 
 def get_trajectory(program: dsl_nodes.Program, initial_state: KarelEnvironment) -> list[dsl_nodes.Action]:
@@ -31,34 +31,42 @@ def trajectories_similarity(tau_a: list[dsl_nodes.Action], tau_b: list[dsl_nodes
 
 def behaviour_smoothness_one_pass(search_space: BaseSearchSpace, env_generators: list[KarelStateGenerator],
                                   n_mutations: int = 10) -> tuple[list[float], list[str]]:
-    search_space.initialize_program()
+    individual, init_prog = search_space.initialize_individual()
     initial_states = [env_generator.random_state() for env_generator in env_generators]
-    initial_program = search_space.get_current_program()
-    initial_trajectories = [get_trajectory(initial_program, s) for s in initial_states]
+    initial_trajectories = [get_trajectory(init_prog, s) for s in initial_states]
     smoothness = []
-    programs = [search_space.dsl.parse_node_to_str(initial_program)]
+    programs = [search_space.dsl.parse_node_to_str(init_prog)]
     for _ in range(n_mutations):
-        search_space.mutate_current_program()
-        current_program = search_space.get_current_program()
-        trajectories = [get_trajectory(current_program, s) for s in initial_states]
+        individual, prog = search_space.get_neighbors(individual, k=1)[0]
+        trajectories = [get_trajectory(prog, s) for s in initial_states]
         smoothness.append(np.mean([trajectories_similarity(tau_a, tau_b) for tau_a, tau_b in zip(initial_trajectories, trajectories)]))
-        programs.append(search_space.dsl.parse_node_to_str(current_program))
+        programs.append(search_space.dsl.parse_node_to_str(prog))
     return smoothness, programs
 
 if __name__ == '__main__':
     
-    n_passes = 1000
+    n_passes = 100
     n_env = 32
     n_mutations = 10
     
     dsl = KarelDSL()
     search_spaces = [
         # ProgrammaticSpace(dsl),
-        LatentSpace(dsl)
+        # LatentSpace(dsl, sigma=0.25),
+        # LatentSpace(dsl, sigma=0.1),
+        LatentSpace(dsl, sigma=0.5),
+        # LatentSpace2(dsl, sigma=0.25),
+        # LatentSpace2(dsl, sigma=0.1),
+        LatentSpace2(dsl, sigma=0.5),
     ]
     search_spaces_labels = [
         # 'programmatic',
-        'latent'
+        # 'latent_025',
+        # 'latent_010',
+        'latent_050',
+        # 'latent2_025',
+        # 'latent2_010',
+        'latent2_050',
     ]
     
     env_args = {
