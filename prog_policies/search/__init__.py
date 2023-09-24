@@ -2,6 +2,7 @@ from __future__ import annotations
 from .base_search import BaseSearch
 from .latent_cem import LatentCEM
 from .latent_cem_leaps import LatentCEM_LEAPS
+from .latent_cem_leaps2 import LatentCEM_LEAPS2
 from .latent_cem_hprl import LatentCEM_HPRL
 from .disentangled_latent_cem import DisentangledLatentCEM
 from .simulated_annealing import SimulatedAnnealing
