@@ -1,8 +1,10 @@
+from __future__ import annotations
+from typing import Any
 from abc import ABC, abstractmethod
 import numpy as np
 import torch
 
-from ..base.dsl import BaseDSL
+from ..base.dsl import BaseDSL, dsl_nodes
 
 class BaseSearchSpace(ABC):
     
@@ -13,24 +15,15 @@ class BaseSearchSpace(ABC):
         self.torch_device = torch.device('cpu')
         self.torch_rng = torch.Generator(device=self.torch_device)
         self.torch_rng.manual_seed(self.np_rng.randint(1000000))
-    
-    def initialize_program(self, seed: int = None):
-        if seed is not None:
-            self.np_rng = np.random.RandomState(seed)
-            self.torch_rng.manual_seed(self.np_rng.randint(1000000))
-        self.current_program = self.random_program()
-        
-    def get_current_program(self):
-        return self.current_program
+
+    def set_seed(self, seed: int):
+        self.np_rng = np.random.RandomState(seed)
+        self.torch_rng.manual_seed(self.np_rng.randint(1000000))
     
     @abstractmethod
-    def random_program(self):
+    def initialize_individual(self, seed: int = None) -> tuple[Any, dsl_nodes.Program]:
         pass
     
     @abstractmethod
-    def mutate_current_program(self):
-        pass
-    
-    @abstractmethod
-    def rollback_mutation(self):
+    def get_neighbors(self, individual, k: int = 1) -> list[tuple[Any, dsl_nodes.Program]]:
         pass

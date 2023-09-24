@@ -10,7 +10,7 @@ from leaps.fetch_mapping import fetch_mapping
 
 from .base_space import BaseSearchSpace
 
-class LatentSpace(BaseSearchSpace):
+class LatentSpace2(BaseSearchSpace):
     
     def __init__(self, dsl: BaseDSL, sigma: float = 0.25) -> None:
         super().__init__(dsl)
@@ -64,11 +64,16 @@ class LatentSpace(BaseSearchSpace):
     
     def get_neighbors(self, individual: torch.Tensor, k: int = 1) -> list[tuple[torch.Tensor, dsl_nodes.Program]]:
         neighbors = []
+        init_prog = self.decode_individual(individual)
+        n_nodes = len(init_prog.get_all_nodes())
         for _ in range(k):
             n_tries = 0
             while n_tries < 50:
                 try:
-                    neighbor = individual + self.sigma * torch.randn(self.hidden_size, generator=self.torch_rng, device=self.torch_device)
+                    if self.np_rng.rand() < 1/n_nodes:
+                        neighbor = torch.randn(self.hidden_size, generator=self.torch_rng, device=self.torch_device)
+                    else:
+                        neighbor = individual + self.sigma * torch.randn(self.hidden_size, generator=self.torch_rng, device=self.torch_device)
                     prog = self.decode_individual(neighbor) # Check if it's a valid program
                     break
                 except (AssertionError, IndexError): # In case of invalid program, try again

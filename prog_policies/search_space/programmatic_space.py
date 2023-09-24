@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import numpy as np
 
@@ -13,15 +14,15 @@ def get_max_depth(program: dsl_nodes.Program) -> int:
             depth = max(depth, get_max_depth(child))
     return depth + program.node_depth
     
-# recursively calculate the max number of joined concatenate nodes
-def get_max_sequence(program: dsl_nodes.Program) -> int:
-    max_sequence = 0
-    # TODO
-    # for child in program.children:
-    #     if issubclass(type(child), dsl_nodes.Concatenate):
-    #         max_sequence = max(max_sequence, child.get_max_sequence())
-    # if issubclass(type(self), Concatenate):
-    #     max_sequence += 1
+# recursively calculate the max number of Concatenate nodes in a row
+def get_max_sequence(program: dsl_nodes.Program, current_sequence = 1, max_sequence = 0) -> int:
+    if isinstance(program, dsl_nodes.Concatenate):
+        current_sequence += 1
+    else:
+        current_sequence = 1
+    max_sequence = max(max_sequence, current_sequence)
+    for child in program.children:
+        max_sequence = max(max_sequence, get_max_sequence(child, current_sequence, max_sequence))
     return max_sequence
 
 class ProgrammaticSpace(BaseSearchSpace):
@@ -64,10 +65,10 @@ class ProgrammaticSpace(BaseSearchSpace):
             node.children[i] = child_instance
             child_instance.parent = node
 
-    def random_program(self):
+    def initialize_individual(self) -> tuple[dsl_nodes.Program, dsl_nodes.Program]:
         program = dsl_nodes.Program()
         self.fill_children_of_node(program, max_depth=4, max_sequence=6)
-        return program
+        return program, program
     
     def mutate_node(self, node_to_mutate: dsl_nodes.BaseNode) -> None:
         for i, child in enumerate(node_to_mutate.parent.children):
@@ -95,16 +96,18 @@ class ProgrammaticSpace(BaseSearchSpace):
                                                                 p=list(self.dsl.const_int_probs.values()))
                 node_to_mutate.parent.children[i] = child_instance
                 child_instance.parent = node_to_mutate.parent
+            
+    def get_neighbors(self, individual, k = 1) -> list[tuple[dsl_nodes.Program, dsl_nodes.Program]]:
+        neighbors = []
+        for _ in range(k):
+            accepted = False
+            while not accepted:
+                mutated_program = copy.deepcopy(individual)
+                node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
+                self.mutate_node(node_to_mutate)
+                accepted = get_max_depth(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6
+            neighbors.append((mutated_program, mutated_program))
+        return neighbors
     
-    def mutate_current_program(self) -> None:
-        accepted = False
-        self.previous_program = self.current_program
-        while not accepted:
-            mutated_program = copy.deepcopy(self.current_program)
-            node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
-            self.mutate_node(node_to_mutate)
-            accepted = get_max_depth(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6
-        self.current_program = mutated_program
-        
-    def rollback_mutation(self):
-        self.current_program = self.previous_program
+    def decode_individual(self, individual) -> dsl_nodes.Program:
+        return individual
