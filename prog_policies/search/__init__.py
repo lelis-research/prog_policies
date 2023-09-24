@@ -16,7 +16,9 @@ from .latent_simulated_annealing_no_mutation import LatentSimulatedAnnealingNoMu
 from .top_down import TopDownSearch
 from .random_latent import RandomLatent
 from .random_programmatic import RandomProgrammatic
+from .shc_leaps import StochasticHillClimbing2_LEAPS
 from .stochastic_hill_climbing import StochasticHillClimbing
+from .stochastic_hill_climbing2 import StochasticHillClimbing2
 from .stochastic_hill_climbing_credit_assignment import StochasticHillClimbingWithCreditAssignment
 from .stochastic_hill_climbing_with_simplification import StochasticHillClimbingWithSimplification
 
