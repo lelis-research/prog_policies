@@ -15,6 +15,7 @@ class LatentCEM(BaseSearch):
         self.restart_timeout = search_method_args.get('restart_timeout', 10)
         self.initial_sigma = search_method_args.get('initial_sigma', 0.1)
         self.reduce_to_mean = search_method_args.get('reduce_to_mean', False)
+        self.exp_decay = search_method_args.get('exp_decay', False)
     
     def init_search_vars(self):
         self.sigma = self.initial_sigma
@@ -102,7 +103,6 @@ class LatentCEM(BaseSearch):
                 self.population_size, generator=self.torch_rng, replacement=True)
             if self.reduce_to_mean:
                 elite_population = torch.mean(elite_population, dim=0).repeat(n_elite, 1)
-                self.sigma = torch.std(elite_population)
             new_population = []
             for index in new_indices:
                 sample = elite_population[index]
@@ -112,3 +112,8 @@ class LatentCEM(BaseSearch):
                                                       device=self.torch_device)
                 )
             self.population = torch.stack(new_population)
+
+        if self.exp_decay:
+            self.sigma *= 0.998
+            if self.sigma < 0.1:
+                self.sigma = 0.1
