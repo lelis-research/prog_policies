@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     if args.task == "CleanHouse" or args.task == "StairClimberSparse" or args.task == "TopOff":
         sigma = 0.25
-    elif args.task == "FourCorner" or args.task == "Harvester":
+    elif args.task == "FourCorners" or args.task == "Harvester":
         sigma = 0.5
     elif args.task == "MazeSparse":
         sigma = 0.1
