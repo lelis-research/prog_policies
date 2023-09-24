@@ -45,27 +45,27 @@ def behaviour_smoothness_one_pass(search_space: BaseSearchSpace, env_generators:
 
 if __name__ == '__main__':
     
-    n_passes = 100
+    n_passes = 250
     n_env = 32
     n_mutations = 10
     
     dsl = KarelDSL()
     search_spaces = [
-        # ProgrammaticSpace(dsl),
-        # LatentSpace(dsl, sigma=0.25),
-        # LatentSpace(dsl, sigma=0.1),
+        ProgrammaticSpace(dsl),
+        LatentSpace(dsl, sigma=0.25),
+        LatentSpace(dsl, sigma=0.1),
         LatentSpace(dsl, sigma=0.5),
-        # LatentSpace2(dsl, sigma=0.25),
-        # LatentSpace2(dsl, sigma=0.1),
+        LatentSpace2(dsl, sigma=0.25),
+        LatentSpace2(dsl, sigma=0.1),
         LatentSpace2(dsl, sigma=0.5),
     ]
     search_spaces_labels = [
-        # 'programmatic',
-        # 'latent_025',
-        # 'latent_010',
+        'programmatic',
+        'latent_025',
+        'latent_010',
         'latent_050',
-        # 'latent2_025',
-        # 'latent2_010',
+        'latent2_025',
+        'latent2_010',
         'latent2_050',
     ]
     
