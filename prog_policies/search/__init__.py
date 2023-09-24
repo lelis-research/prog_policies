@@ -3,7 +3,6 @@ from .base_search import BaseSearch
 from .latent_cem import LatentCEM
 from .latent_cem_leaps import LatentCEM_LEAPS
 from .latent_cem_leaps2 import LatentCEM_LEAPS2
-from .latent_cem_hprl import LatentCEM_HPRL
 from .disentangled_latent_cem import DisentangledLatentCEM
 from .simulated_annealing import SimulatedAnnealing
 from .simulated_annealing_leaps import SimulatedAnnealing_LEAPS
@@ -21,6 +20,8 @@ from .stochastic_hill_climbing import StochasticHillClimbing
 from .stochastic_hill_climbing2 import StochasticHillClimbing2
 from .stochastic_hill_climbing_credit_assignment import StochasticHillClimbingWithCreditAssignment
 from .stochastic_hill_climbing_with_simplification import StochasticHillClimbingWithSimplification
+
+class LatentCEM_LEAPS_Original(LatentCEM_LEAPS): pass
 
 def get_search_cls(search_cls_name: str) -> type[BaseSearch]:
     search_cls = globals().get(search_cls_name)
