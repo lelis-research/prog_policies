@@ -105,7 +105,8 @@ class ProgrammaticSpace(BaseSearchSpace):
                 mutated_program = copy.deepcopy(individual)
                 node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
                 self.mutate_node(node_to_mutate)
-                accepted = get_max_depth(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6
+                prog_str = self.dsl.parse_node_to_str(mutated_program)
+                accepted = get_max_depth(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6 and len(prog_str.split(" ")) <= 45
             neighbors.append((mutated_program, mutated_program))
         return neighbors
     
