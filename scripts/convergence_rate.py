@@ -43,12 +43,13 @@ if __name__ == '__main__':
     
     n_env = 32
     n_search_iterations = 1000
-    n_tries = 100
+    n_tries = 250
     
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     
     parser.add_argument('task', help='Name of the task class')
     parser.add_argument('k', type=int, help='Number of neighbors to consider')
+    parser.add_argument('space', help='Search space to use')
     
     args = parser.parse_args()
 
@@ -62,16 +63,12 @@ if __name__ == '__main__':
         sigma = 0.25
     
     dsl = KarelDSL()
-    search_spaces = [
-        ProgrammaticSpace(dsl),
-        LatentSpace(dsl, sigma),
-        LatentSpace2(dsl, sigma),
-    ]
-    search_spaces_labels = [
-        'programmatic',
-        'latent',
-        'latent2',
-    ]
+    
+    search_spaces = {
+        'programmatic': ProgrammaticSpace(dsl),
+        'latent': LatentSpace(dsl, sigma),
+        'latent2': LatentSpace2(dsl, sigma)
+    }
     
     env_args = {
         "env_height": 8,
@@ -88,12 +85,12 @@ if __name__ == '__main__':
     task_cls = get_task_cls(args.task)
     task_envs = [task_cls(env_args, i) for i in range(n_env)]
     
-    for search_space, search_space_label in zip(search_spaces, search_spaces_labels):
-        def f(seed):
-            r = stochastic_hill_climbing(search_space, task_envs, seed, n_search_iterations, args.k)
-            return r
-        with Pool() as pool:
-            rewards = pool.map(f, range(n_tries))
-        with open(f'output/rewards_{search_space_label}_k{args.k}_{args.task}.csv', 'w') as f:
-            for reward in rewards:
-                f.write(','.join([str(r) for r in reward]) + '\n')
+    with open(f'output/rewards_{args.space}_k{args.k}_{args.task}.csv', 'w') as f:
+        f.write('')
+    def f(seed):
+        r = stochastic_hill_climbing(search_spaces[args.space], task_envs, seed, n_search_iterations, args.k)
+        with open(f'output/rewards_{args.space}_k{args.k}_{args.task}.csv', 'a') as f:
+            f.write(','.join([str(reward) for reward in r]) + '\n')
+        return r
+    with Pool() as pool:
+        pool.map(f, range(n_tries))
