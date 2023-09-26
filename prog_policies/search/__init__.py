@@ -22,6 +22,7 @@ from .stochastic_hill_climbing_credit_assignment import StochasticHillClimbingWi
 from .stochastic_hill_climbing_with_simplification import StochasticHillClimbingWithSimplification
 
 class LatentCEM_LEAPS_Original(LatentCEM_LEAPS): pass
+class LatentCEM_LEAPS_Original2(LatentCEM_LEAPS2): pass
 
 def get_search_cls(search_cls_name: str) -> type[BaseSearch]:
     search_cls = globals().get(search_cls_name)
