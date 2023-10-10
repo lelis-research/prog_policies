@@ -45,7 +45,7 @@ def behaviour_smoothness_one_pass(search_space: BaseSearchSpace, env_generators:
 
 if __name__ == '__main__':
     
-    n_passes = 1000
+    n_passes = 250
     n_env = 32
     n_mutations = 10
     

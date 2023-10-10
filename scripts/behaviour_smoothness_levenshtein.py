@@ -11,35 +11,39 @@ from prog_policies.karel import KarelDSL, KarelEnvironment, KarelStateGenerator
 from prog_policies.search_space import BaseSearchSpace, ProgrammaticSpace, LatentSpace, LatentSpace2
 
 
-def get_trajectory(program: dsl_nodes.Program, initial_state: KarelEnvironment) -> list[dsl_nodes.Action]:
-    tau = []
-    for action in program.run_generator(copy.deepcopy(initial_state)):
-        tau.append(action)
-    return tau
+def get_state_sequence(program: dsl_nodes.Program, initial_state: KarelEnvironment) -> list[KarelEnvironment]:
+    state = copy.deepcopy(initial_state)
+    states = [state]
+    for _ in program.run_generator(state):
+        states.append(copy.deepcopy(state))
+    return states
 
-def trajectories_similarity(tau_a: list[dsl_nodes.Action], tau_b: list[dsl_nodes.Action]) -> float:
-    similarity = 0.
-    t_max = max(len(tau_a), len(tau_b))
-    if t_max == 0: return 1.
-    for i in range(min(len(tau_a), len(tau_b))):
-        if tau_a[i].name == tau_b[i].name:
-            similarity += 1.
-        else:
-            break
-    similarity /= t_max
-    return similarity
+# normalized levenshtein distance
+def lev_distance(tau_a: list[KarelEnvironment], tau_b: list[KarelEnvironment]) -> float:
+    distances = np.zeros((len(tau_a) + 1, len(tau_b) + 1))
+    for i in range(len(tau_a) + 1):
+        distances[i, 0] = i
+    for j in range(len(tau_b) + 1):
+        distances[0, j] = j
+    for i in range(1, len(tau_a) + 1):
+        for j in range(1, len(tau_b) + 1):
+            if tau_a[i-1] == tau_b[j-1]:
+                distances[i, j] = distances[i-1, j-1]
+            else:
+                distances[i, j] = min(distances[i-1, j], distances[i, j-1], distances[i-1, j-1]) + 1
+    return 1. - distances[-1, -1] / max(len(tau_a), len(tau_b))
 
 def behaviour_smoothness_one_pass(search_space: BaseSearchSpace, env_generators: list[KarelStateGenerator],
                                   n_mutations: int = 10) -> tuple[list[float], list[str]]:
     individual, init_prog = search_space.initialize_individual()
     initial_states = [env_generator.random_state() for env_generator in env_generators]
-    initial_trajectories = [get_trajectory(init_prog, s) for s in initial_states]
+    initial_trajectories = [get_state_sequence(init_prog, s) for s in initial_states]
     smoothness = []
     programs = [search_space.dsl.parse_node_to_str(init_prog)]
     for _ in range(n_mutations):
         individual, prog = search_space.get_neighbors(individual, k=1)[0]
-        trajectories = [get_trajectory(prog, s) for s in initial_states]
-        smoothness.append(np.mean([trajectories_similarity(tau_a, tau_b) for tau_a, tau_b in zip(initial_trajectories, trajectories)]))
+        trajectories = [get_state_sequence(prog, s) for s in initial_states]
+        smoothness.append(np.mean([lev_distance(tau_a, tau_b) for tau_a, tau_b in zip(initial_trajectories, trajectories)]))
         programs.append(search_space.dsl.parse_node_to_str(prog))
     return smoothness, programs
 
@@ -88,7 +92,7 @@ if __name__ == '__main__':
                 programs_list.append(programs)
             except Exception:
                 continue
-        with open(f'output/{label}_smoothness_values.csv', 'w') as f:
+        with open(f'output/{label}_levenshtein_values.csv', 'w') as f:
             f.write(','.join([str(s) for s in range(1, n_mutations+1)]) + '\n')
             for smoothness in smoothness_list:
                 f.write(','.join([str(s) for s in smoothness]) + '\n')
