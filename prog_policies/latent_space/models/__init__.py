@@ -4,6 +4,7 @@ from .base_vae import BaseVAE
 from .leaps_vae import LeapsVAE
 from .leaps_vq_vae import LeapsVQVAE
 from .leaps_vq_vae_split import LeapsVQVAE_Split
+from .leaps_vq_vae_hier import LeapsVQVAE_Hier
 from .leaps_perceptions_vae import LeapsPerceptionsVAE
 from .sketch_vae import SketchVAE
 from .dss_vae import DSSVAE
