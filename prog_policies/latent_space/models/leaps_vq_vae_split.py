@@ -77,7 +77,7 @@ class Losses(NamedTuple):
 class LeapsVQVAE_Split(BaseVAE):
     def __init__(self, dsl: BaseDSL, device: torch.device, env_cls: type[BaseEnvironment],
                  env_args: dict, max_program_length = 45, max_demo_length = 100, model_seed = 1,
-                 hidden_size = 256, vq_dim = 256, vq_size = 100, n_vq = 4,
+                 hidden_size = 256, vq_size = 100, n_vq = 4,
                  logger: Logger = None, name: str = None, wandb_args: dict = None):
         super().__init__(dsl, device, env_cls, env_args, max_program_length, max_demo_length,
                          model_seed, hidden_size, logger=logger, name=name, wandb_args=wandb_args)
@@ -85,16 +85,19 @@ class LeapsVQVAE_Split(BaseVAE):
         # Input: rho_i (T). Output: enc(rho_i) (T).
         token_encoder = nn.Embedding(self.num_program_tokens, self.num_program_tokens)
         
-        self.prog_encoder = ProgramSequenceEncoder(
-            token_encoder,
-            gru=nn.GRU(self.num_program_tokens, self.hidden_size)
-        )
+        self.prog_encoders = [
+            ProgramSequenceEncoder(
+                token_encoder,
+                gru=nn.GRU(self.num_program_tokens, self.hidden_size)
+            )
+            for _ in range(n_vq)
+        ]
         
         self.prog_decoder = ProgramSequenceDecoder(
             token_encoder, 
-            gru=nn.GRU(self.hidden_size + self.num_program_tokens, self.hidden_size),
+            gru=nn.GRU(self.hidden_size * n_vq + self.num_program_tokens, self.hidden_size * n_vq),
             mlp=nn.Sequential(
-                self.init_(nn.Linear(self.hidden_size + self.num_program_tokens + self.hidden_size,
+                self.init_(nn.Linear(2 * self.hidden_size * n_vq + self.num_program_tokens,
                                     self.hidden_size)),
                 nn.Tanh(), self.init_(nn.Linear(self.hidden_size, self.num_program_tokens))
             ),
@@ -103,41 +106,15 @@ class LeapsVQVAE_Split(BaseVAE):
             max_program_length=max_program_length
         )
         
-        state_encoder = nn.Sequential(
-            self.init_(nn.Conv2d(self.state_shape[0], 32, 3, stride=1)), nn.ReLU(),
-            self.init_(nn.Conv2d(32, 32, 3, stride=1)), nn.ReLU(), nn.Flatten(),
-            self.init_(nn.Linear(32 * 4 * 4, self.hidden_size)), nn.ReLU()
-        )
-        
-        # Input: a_i (A). Output: enc(a_i) (A).
-        action_encoder = nn.Embedding(self.num_agent_actions, self.num_agent_actions)
-        
-        self.traj_rec = TrajectorySequenceDecoder(
-            action_encoder,
-            state_encoder,
-            gru=nn.GRU(2 * self.hidden_size + self.num_agent_actions, self.hidden_size),
-            mlp=nn.Sequential(
-                self.init_(nn.Linear(self.hidden_size, self.hidden_size)), nn.Tanh(),
-                self.init_(nn.Linear(self.hidden_size, self.hidden_size)), nn.Tanh(),
-                self.init_(nn.Linear(self.hidden_size, self.num_agent_actions))
-            ),
-            device=self.device,
-            max_demo_length=max_demo_length,
-            num_agent_actions=self.num_agent_actions
-        )
-        
-        # self.n_vq = n_vq
-        
         # Encoder VAE utils
-        self.quantizer = VectorQuantizer(self.device, vq_size, vq_dim // n_vq, 0.25)
+        self.quantizer = VectorQuantizer(self.device, vq_size, self.hidden_size, 0.25)
         
         self.to(self.device)
 
-    def sample_latent_vector(self, enc_hidden_state: torch.Tensor) -> torch.Tensor:
-        enc_states = torch.split(enc_hidden_state, self.quantizer.D, dim=-1)
+    def sample_latent_vector(self, enc_hidden_states: list[torch.Tensor]) -> torch.Tensor:
         quantized_states = []
         losses = []
-        for enc_state in enc_states:
+        for enc_state in enc_hidden_states:
             quantized_states.append(self.quantizer(enc_state.squeeze(-1)))
             losses.append(self.quantizer.get_loss())
         self.vq_loss = torch.stack(losses).sum()
@@ -151,19 +128,19 @@ class LeapsVQVAE_Split(BaseVAE):
                 a_h_teacher_enforcing = True) -> ModelReturn:
         s_h, a_h, a_h_masks, progs, progs_masks = data_batch
         
-        enc_hidden_state = self.prog_encoder(progs, progs_masks)
+        enc_hidden_states = [
+            prog_encoder(progs, progs_masks)
+            for prog_encoder in self.prog_encoders
+        ]
         
-        z = self.sample_latent_vector(enc_hidden_state)
+        z = self.sample_latent_vector(enc_hidden_states)
         
         pred_progs, pred_progs_logits, pred_progs_masks = self.prog_decoder(
             z, progs, progs_masks, prog_teacher_enforcing
         )
-        pred_a_h, pred_a_h_logits, pred_a_h_masks = self.traj_rec(
-            z, s_h, a_h, a_h_masks, a_h_teacher_enforcing
-        )
         
         return ModelReturn(z, pred_progs, pred_progs_logits, pred_progs_masks,
-                           pred_a_h, pred_a_h_logits, pred_a_h_masks)
+                           None, None, None)
         
     def encode_program(self, prog: torch.Tensor):
         if prog.dim() == 1:
