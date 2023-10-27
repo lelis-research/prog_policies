@@ -8,13 +8,33 @@ from prog_policies.base import dsl_nodes
 from .base_search import BaseSearch
 from .utils import evaluate_program
 
-class StochasticHillClimbing(BaseSearch):
+# recursively calculate the node depth (number of levels from root)
+def get_max_depth(program: dsl_nodes.Program) -> int:
+    depth = 0
+    for child in program.children:
+        if child is not None:
+            depth = max(depth, get_max_depth(child))
+    return depth + program.node_depth
+    
+# recursively calculate the max number of Concatenate nodes in a row
+def get_max_sequence(program: dsl_nodes.Program, current_sequence = 1, max_sequence = 0) -> int:
+    if isinstance(program, dsl_nodes.Concatenate):
+        current_sequence += 1
+    else:
+        current_sequence = 1
+    max_sequence = max(max_sequence, current_sequence)
+    for child in program.children:
+        max_sequence = max(max_sequence, get_max_sequence(child, current_sequence, max_sequence))
+    return max_sequence
+
+class StochasticHillClimbing2(BaseSearch):
     def parse_method_args(self, search_method_args: dict):
-        pass
+        self.k = search_method_args.get('k', 250)
         
     def init_search_vars(self):
         self.current_program = self.random_program()
         self.current_reward = evaluate_program(self.current_program, self.dsl, self.task_envs)
+        self.num_evaluations = 1
         
     def get_search_vars(self) -> dict:
         return {
@@ -120,10 +140,28 @@ class StochasticHillClimbing(BaseSearch):
         if self.best_reward >= 1.0:
             return
         
-        next_program = self.mutate_current_program()
-        next_reward = evaluate_program(next_program, self.dsl, self.task_envs)
-        self.num_evaluations += 1
+        neighbors = []
+        for _ in range(self.k):
+            accepted = False
+            while not accepted:
+                mutated_program = copy.deepcopy(self.current_program)
+                node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
+                self.mutate_node(node_to_mutate)
+                prog_str = self.dsl.parse_node_to_str(mutated_program)
+                accepted = get_max_depth(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6 and len(prog_str.split(" ")) <= 45
+            neighbors.append(mutated_program)
         
-        if next_reward >= self.current_reward:
-            self.current_program = next_program
-            self.current_reward = next_reward
+        in_local_maximum = True
+        for prog in neighbors:
+            reward = evaluate_program(prog, self.dsl, self.task_envs)
+            self.num_evaluations += 1
+            if reward > self.current_reward:
+                self.current_program = prog
+                self.current_reward = reward
+                in_local_maximum = False
+                break
+        
+        if in_local_maximum:
+            self.current_program = self.random_program()
+            self.current_reward = evaluate_program(self.current_program, self.dsl, self.task_envs)
+            self.num_evaluations += 1

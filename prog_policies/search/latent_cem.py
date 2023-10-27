@@ -15,6 +15,7 @@ class LatentCEM(BaseSearch):
         self.restart_timeout = search_method_args.get('restart_timeout', 10)
         self.initial_sigma = search_method_args.get('initial_sigma', 0.1)
         self.reduce_to_mean = search_method_args.get('reduce_to_mean', False)
+        self.exp_decay = search_method_args.get('exp_decay', False)
     
     def init_search_vars(self):
         self.sigma = self.initial_sigma
@@ -45,13 +46,15 @@ class LatentCEM(BaseSearch):
         Returns:
             torch.Tensor: Initial population as a tensor.
         """
-        return torch.randn(self.population_size, self.latent_model.hidden_size,
+        return torch.randn(self.population_size, self.hidden_size,
                            generator=self.torch_rng, device=self.torch_device)
         
-        
-    def execute_population(self, population: torch.Tensor) -> tuple[list[str], torch.Tensor, int]:
+    def decode_population(self, population: torch.Tensor) -> list[str]:
         programs_tokens = self.latent_model.decode_vector(population)
-        programs_str = [self.dsl.parse_int_to_str(prog_tokens) for prog_tokens in programs_tokens]
+        return [self.dsl.parse_int_to_str(prog_tokens) for prog_tokens in programs_tokens]
+    
+    def execute_population(self, population: torch.Tensor) -> tuple[list[str], torch.Tensor, int]:
+        programs_str = self.decode_population(population)
         
         if self.pool is not None:
             fn = partial(evaluate_program, dsl=self.dsl, task_envs=self.task_envs)
@@ -100,13 +103,17 @@ class LatentCEM(BaseSearch):
                 self.population_size, generator=self.torch_rng, replacement=True)
             if self.reduce_to_mean:
                 elite_population = torch.mean(elite_population, dim=0).repeat(n_elite, 1)
-                self.sigma = torch.std(elite_population)
             new_population = []
             for index in new_indices:
                 sample = elite_population[index]
                 new_population.append(
-                    sample + self.sigma * torch.randn(self.latent_model.hidden_size,
+                    sample + self.sigma * torch.randn(self.hidden_size,
                                                       generator=self.torch_rng,
                                                       device=self.torch_device)
                 )
             self.population = torch.stack(new_population)
+
+        if self.exp_decay:
+            self.sigma *= 0.998
+            if self.sigma < 0.1:
+                self.sigma = 0.1

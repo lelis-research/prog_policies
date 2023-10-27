@@ -5,4 +5,13 @@ numpy
 scipy
 pandas
 tqdm
+tensorboardX==1.9
+gym==0.15.4
+requests
 wandb
+ply
+imageio
+h5py
+colorlog
+progressbar
+torchvision==0.11.1

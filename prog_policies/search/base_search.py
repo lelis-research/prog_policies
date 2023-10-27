@@ -56,16 +56,11 @@ class BaseSearch(ABC):
         os.makedirs(self.checkpoint_folder, exist_ok=True)
         self.max_evaluations = max_evaluations
         self.n_proc = n_proc
-        if latent_model_cls_name is not None:
-            latent_model_args['device'] = device
-            latent_model_args['dsl'] = dsl
-            latent_model_args['env_args'] = env_args
-            latent_model_args['env_cls'] = env_cls
-            torch.set_num_threads(self.n_proc)
-            self.latent_model = load_model(latent_model_cls_name, latent_model_args,
-                                           latent_model_params_path)
-        self.search_seed = search_seed
         self.torch_device = device
+        if latent_model_cls_name is not None:
+            self.load_latent_model(latent_model_cls_name, latent_model_args,
+                                   latent_model_params_path, env_cls, env_args)
+        self.search_seed = search_seed
         self.checkpoint_frequency = checkpoint_frequency
         if log_folder is not None:
             log_filename = f'{method_label}_{task_specifier}_{search_seed}'
@@ -108,6 +103,18 @@ class BaseSearch(ABC):
     @abstractmethod
     def parse_method_args(self, search_method_args: dict):
         pass
+    
+    def load_latent_model(self, latent_model_cls_name: str, latent_model_args: dict,
+                          latent_model_params_path: str, env_cls: type[BaseEnvironment] = None,
+                          env_args: dict = None):
+        latent_model_args['device'] = self.torch_device
+        latent_model_args['dsl'] = self.dsl
+        latent_model_args['env_args'] = env_args
+        latent_model_args['env_cls'] = env_cls
+        torch.set_num_threads(self.n_proc)
+        self.latent_model = load_model(latent_model_cls_name, latent_model_args,
+                                        latent_model_params_path)
+        self.hidden_size = self.latent_model.hidden_size
     
     def init_search_state(self):
         self.np_rng = np.random.RandomState(self.search_seed)

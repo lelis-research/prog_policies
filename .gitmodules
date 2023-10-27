@@ -1,0 +1,6 @@
+[submodule "leaps"]
+	path = leaps
+	url = https://github.com/Tales-Carvalho/leaps
+[submodule "hprl"]
+	path = hprl
+	url = https://github.com/Tales-Carvalho/hprl
