@@ -6,37 +6,61 @@ from ..base.dsl import dsl_nodes
 
 from .base_space import BaseSearchSpace
 
-# recursively calculate the node depth (number of levels from root)
-def get_max_depth(program: dsl_nodes.Program) -> int:
-    depth = 0
+def get_max_height(program: dsl_nodes.Program) -> int:
+    """Calculates the maximum height of an input program AST
+
+    Args:
+        program (dsl_nodes.Program): Input program
+
+    Returns:
+        int: Maximum height of AST
+    """
+    height = 0
     for child in program.children:
         if child is not None:
-            depth = max(depth, get_max_depth(child))
-    return depth + program.node_depth
+            height = max(height, get_max_height(child))
+    return height + program.node_depth
     
-# recursively calculate the max number of Concatenate nodes in a row
-def get_max_sequence(program: dsl_nodes.Program, current_sequence = 1, max_sequence = 0) -> int:
+def get_max_sequence(program: dsl_nodes.Program, _current_sequence = 1, _max_sequence = 0) -> int:
+    """Returns the length of maximum sequence of Concatenate nodes in an input program
+
+    Args:
+        program (dsl_nodes.Program): Input program
+
+    Returns:
+        int: Length of maximum sequence of Concatenate nodes
+    """
     if isinstance(program, dsl_nodes.Concatenate):
-        current_sequence += 1
+        _current_sequence += 1
     else:
-        current_sequence = 1
-    max_sequence = max(max_sequence, current_sequence)
+        _current_sequence = 1
+    _max_sequence = max(_max_sequence, _current_sequence)
     for child in program.children:
-        max_sequence = max(max_sequence, get_max_sequence(child, current_sequence, max_sequence))
-    return max_sequence
+        _max_sequence = max(_max_sequence, get_max_sequence(child, _current_sequence, _max_sequence))
+    return _max_sequence
+
 
 class ProgrammaticSpace(BaseSearchSpace):
     
-    def fill_children_of_node(self, node: dsl_nodes.BaseNode,
-                          current_depth: int = 1, current_sequence: int = 0,
-                          max_depth: int = 4, max_sequence: int = 6) -> None:
+    def _fill_children(self, node: dsl_nodes.BaseNode,
+                          current_height: int = 1, current_sequence: int = 0,
+                          max_height: int = 4, max_sequence: int = 6) -> None:
+        """Recursively fills the children of a program node
+
+        Args:
+            node (dsl_nodes.BaseNode): Input node
+            current_height (int, optional): Height of current element, for recursion. Defaults to 1.
+            current_sequence (int, optional): Sequence of current element, for recursion. Defaults to 0.
+            max_height (int, optional): Maximum allowed AST height. Defaults to 4.
+            max_sequence (int, optional): Maximum allowed Concatenate sequence. Defaults to 6.
+        """
         node_prod_rules = self.dsl.prod_rules[type(node)]
         for i, child_type in enumerate(node.get_children_types()):
             child_probs = self.dsl.get_dsl_nodes_probs(child_type)
             for child_type in child_probs:
                 if child_type not in node_prod_rules[i]:
                     child_probs[child_type] = 0.
-                if current_depth >= max_depth and child_type.get_node_depth() > 0:
+                if current_height >= max_height and child_type.get_node_depth() > 0:
                     child_probs[child_type] = 0.
             if issubclass(type(node), dsl_nodes.Concatenate) and current_sequence + 1 >= max_sequence:
                 if dsl_nodes.Concatenate in child_probs:
@@ -47,11 +71,11 @@ class ProgrammaticSpace(BaseSearchSpace):
             child_instance = child()
             if child.get_number_children() > 0:
                 if issubclass(type(node), dsl_nodes.Concatenate):
-                    self.fill_children_of_node(child_instance, current_depth + child.get_node_depth(),
-                                               current_sequence + 1, max_depth, max_sequence)
+                    self._fill_children(child_instance, current_height + child.get_node_depth(),
+                                        current_sequence + 1, max_height, max_sequence)
                 else:
-                    self.fill_children_of_node(child_instance, current_depth + child.get_node_depth(),
-                                               1, max_depth, max_sequence)
+                    self._fill_children(child_instance, current_height + child.get_node_depth(),
+                                        1, max_height, max_sequence)
             
             elif isinstance(child_instance, dsl_nodes.Action):
                 child_instance.name = self.np_rng.choice(list(self.dsl.action_probs.keys()),
@@ -66,11 +90,22 @@ class ProgrammaticSpace(BaseSearchSpace):
             child_instance.parent = node
 
     def initialize_individual(self) -> tuple[dsl_nodes.Program, dsl_nodes.Program]:
+        """Initializes individual using probabilistic DSL
+
+        Returns:
+            tuple[dsl_nodes.Program, dsl_nodes.Program]: Individual as tuple of
+            program (individual) and program (decoding)
+        """
         program = dsl_nodes.Program()
-        self.fill_children_of_node(program, max_depth=4, max_sequence=6)
+        self._fill_children(program, max_height=4, max_sequence=6)
         return program, program
     
-    def mutate_node(self, node_to_mutate: dsl_nodes.BaseNode) -> None:
+    def _mutate_node(self, node_to_mutate: dsl_nodes.BaseNode) -> None:
+        """Mutates a node in a program by replacing it with a random node of the same type
+
+        Args:
+            node_to_mutate (dsl_nodes.BaseNode): Program node to mutate
+        """
         for i, child in enumerate(node_to_mutate.parent.children):
             if child == node_to_mutate:
                 child_type = node_to_mutate.parent.children_types[i]
@@ -84,31 +119,42 @@ class ProgrammaticSpace(BaseSearchSpace):
                 child = self.np_rng.choice(list(child_probs.keys()), p=p_list)
                 child_instance = child()
                 if child.get_number_children() > 0:
-                    self.fill_children_of_node(child_instance)
+                    self._fill_children(child_instance)
                 elif isinstance(child_instance, dsl_nodes.Action):
                     child_instance.name = self.np_rng.choice(list(self.dsl.action_probs.keys()),
-                                                                p=list(self.dsl.action_probs.values()))
+                                                             p=list(self.dsl.action_probs.values()))
                 elif isinstance(child_instance, dsl_nodes.BoolFeature):
                     child_instance.name = self.np_rng.choice(list(self.dsl.bool_feat_probs.keys()),
-                                                                p=list(self.dsl.bool_feat_probs.values()))
+                                                             p=list(self.dsl.bool_feat_probs.values()))
                 elif isinstance(child_instance, dsl_nodes.ConstInt):
                     child_instance.value = self.np_rng.choice(list(self.dsl.const_int_probs.keys()),
-                                                                p=list(self.dsl.const_int_probs.values()))
+                                                              p=list(self.dsl.const_int_probs.values()))
                 node_to_mutate.parent.children[i] = child_instance
                 child_instance.parent = node_to_mutate.parent
             
     def get_neighbors(self, individual, k = 1) -> list[tuple[dsl_nodes.Program, dsl_nodes.Program]]:
+        """Returns k neighbors of a given individual encoded as a program
+
+        Args:
+            individual (dsl_nodes.Program): Individual as a program
+            k (int, optional): Number of neighbors. Defaults to 1.
+
+        Returns:
+            list[tuple[dsl_nodes.Program, dsl_nodes.Program]]: List of individuals as tuples of
+            program (individual) and program (decoding)
+        """
         neighbors = []
         for _ in range(k):
+            # Easiest way to do a valid mutation is to do a random mutation until we find a valid one
+            # This could be changed by restricting the mutation space (_fill_children args in _mutate_node)
             accepted = False
             while not accepted:
                 mutated_program = copy.deepcopy(individual)
                 node_to_mutate = self.np_rng.choice(mutated_program.get_all_nodes()[1:])
-                self.mutate_node(node_to_mutate)
+                self._mutate_node(node_to_mutate)
                 prog_str = self.dsl.parse_node_to_str(mutated_program)
-                accepted = get_max_depth(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6 and len(prog_str.split(" ")) <= 45
+                accepted = get_max_height(mutated_program) <= 4 and get_max_sequence(mutated_program) <= 6 \
+                    and len(prog_str.split(" ")) <= 45
             neighbors.append((mutated_program, mutated_program))
         return neighbors
     
-    def decode_individual(self, individual) -> dsl_nodes.Program:
-        return individual
