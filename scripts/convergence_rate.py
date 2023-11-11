@@ -43,13 +43,14 @@ if __name__ == '__main__':
     
     n_env = 32
     n_search_iterations = 1000
-    n_tries = 250
     
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     
     parser.add_argument('task', help='Name of the task class')
     parser.add_argument('k', type=int, help='Number of neighbors to consider')
     parser.add_argument('space', help='Search space to use')
+    parser.add_argument('seed_lb', type=int, help='Lower bound for seed')
+    parser.add_argument('seed_ub', type=int, help='Upper bound for seed')
     
     args = parser.parse_args()
 
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     dsl = KarelDSL()
     
     search_spaces = {
-        'programmatic': ProgrammaticSpace(dsl),
+        'programmatic': ProgrammaticSpace(dsl, sigma),
         'latent': LatentSpace(dsl, sigma),
         'latent2': LatentSpace2(dsl, sigma)
     }
@@ -82,15 +83,17 @@ if __name__ == '__main__':
         env_args["env_height"] = 14
         env_args["env_width"] = 22
     
+    fname = f'output/rewards_{args.space}_k{args.k}_{args.task}_seeds{args.seed_lb}-{args.seed_ub}.csv'
+
     task_cls = get_task_cls(args.task)
     task_envs = [task_cls(env_args, i) for i in range(n_env)]
     
-    with open(f'output/rewards_{args.space}_k{args.k}_{args.task}.csv', 'w') as f:
+    with open(fname, 'w') as f:
         f.write('')
     def f(seed):
         r = stochastic_hill_climbing(search_spaces[args.space], task_envs, seed, n_search_iterations, args.k)
-        with open(f'output/rewards_{args.space}_k{args.k}_{args.task}.csv', 'a') as f:
+        with open(fname, 'a') as f:
             f.write(','.join([str(reward) for reward in r]) + '\n')
         return r
     with Pool() as pool:
-        pool.map(f, range(n_tries))
+        pool.map(f, range(args.seed_lb, args.seed_ub))
