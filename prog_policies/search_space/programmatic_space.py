@@ -20,7 +20,22 @@ def get_max_height(program: dsl_nodes.Program) -> int:
         if child is not None:
             height = max(height, get_max_height(child))
     return height + program.node_depth
-    
+
+def get_node_current_height(node: dsl_nodes.BaseNode) -> int:
+    """Calculates the current height of an input node in a program AST
+
+    Args:
+        node (dsl_nodes.BaseNode): Input node
+
+    Returns:
+        int: Current height of node
+    """
+    height = node.node_depth
+    while not isinstance(node, dsl_nodes.Program):
+        height += node.parent.node_depth
+        node = node.parent
+    return height
+
 def get_max_sequence(program: dsl_nodes.Program, _current_sequence = 1, _max_sequence = 0) -> int:
     """Returns the length of maximum sequence of Concatenate nodes in an input program
 
@@ -38,6 +53,21 @@ def get_max_sequence(program: dsl_nodes.Program, _current_sequence = 1, _max_seq
     for child in program.children:
         _max_sequence = max(_max_sequence, get_max_sequence(child, _current_sequence, _max_sequence))
     return _max_sequence
+
+def get_node_current_sequence(node: dsl_nodes.BaseNode) -> int:
+    """Returns the length of the current sequence of Concatenate nodes in an input program
+
+    Args:
+        node (dsl_nodes.BaseNode): Input node
+
+    Returns:
+        int: Length of current sequence of Concatenate nodes
+    """
+    current_sequence = 1
+    while isinstance(node, dsl_nodes.Concatenate):
+        current_sequence += 1
+        node = node.parent
+    return current_sequence
 
 
 class ProgrammaticSpace(BaseSearchSpace):
@@ -62,7 +92,7 @@ class ProgrammaticSpace(BaseSearchSpace):
                     child_probs[child_type] = 0.
                 if current_height >= max_height and child_type.get_node_depth() > 0:
                     child_probs[child_type] = 0.
-            if issubclass(type(node), dsl_nodes.Concatenate) and current_sequence + 1 >= max_sequence:
+            if isinstance(node, dsl_nodes.Concatenate) and current_sequence + 1 >= max_sequence:
                 if dsl_nodes.Concatenate in child_probs:
                     child_probs[dsl_nodes.Concatenate] = 0.
             
@@ -70,7 +100,7 @@ class ProgrammaticSpace(BaseSearchSpace):
             child = self.np_rng.choice(list(child_probs.keys()), p=p_list)
             child_instance = child()
             if child.get_number_children() > 0:
-                if issubclass(type(node), dsl_nodes.Concatenate):
+                if isinstance(node, dsl_nodes.Concatenate):
                     self._fill_children(child_instance, current_height + child.get_node_depth(),
                                         current_sequence + 1, max_height, max_sequence)
                 else:
@@ -96,8 +126,13 @@ class ProgrammaticSpace(BaseSearchSpace):
             tuple[dsl_nodes.Program, dsl_nodes.Program]: Individual as tuple of
             program (individual) and program (decoding)
         """
-        program = dsl_nodes.Program()
-        self._fill_children(program, max_height=4, max_sequence=6)
+        accepted = False
+        while not accepted:
+            program = dsl_nodes.Program()
+            self._fill_children(program, max_height=4, max_sequence=6)
+            prog_str = self.dsl.parse_node_to_str(program)
+            accepted = get_max_height(program) <= 4 and get_max_sequence(program) <= 6 \
+                and len(prog_str.split(" ")) <= 45
         return program, program
     
     def _mutate_node(self, node_to_mutate: dsl_nodes.BaseNode) -> None:
@@ -119,7 +154,14 @@ class ProgrammaticSpace(BaseSearchSpace):
                 child = self.np_rng.choice(list(child_probs.keys()), p=p_list)
                 child_instance = child()
                 if child.get_number_children() > 0:
-                    self._fill_children(child_instance)
+                    curr_seq = get_node_current_sequence(node_to_mutate)
+                    if child_type == dsl_nodes.Concatenate:
+                        curr_seq += 1
+                    else:
+                        curr_seq = 1
+                    curr_height = get_node_current_height(node_to_mutate) + child.get_node_depth()
+                    self._fill_children(child_instance, current_height=curr_height, current_sequence=curr_seq,
+                        max_height=4, max_sequence=6)
                 elif isinstance(child_instance, dsl_nodes.Action):
                     child_instance.name = self.np_rng.choice(list(self.dsl.action_probs.keys()),
                                                              p=list(self.dsl.action_probs.values()))

@@ -8,7 +8,7 @@ from ..base.dsl import BaseDSL, dsl_nodes
 
 class BaseSearchSpace(ABC):
     
-    def __init__(self, dsl: BaseDSL, sigma: float) -> None:
+    def __init__(self, dsl: BaseDSL, sigma: float = 0.25) -> None:
         super().__init__()
         self.dsl = dsl
         self.sigma = sigma
