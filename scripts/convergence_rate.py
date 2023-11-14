@@ -6,38 +6,11 @@ from multiprocessing import Pool
 
 sys.path.append('.')
 
-from prog_policies.base import dsl_nodes, BaseTask
 from prog_policies.karel import KarelDSL
 from prog_policies.karel_tasks import get_task_cls
 from prog_policies.search_space import BaseSearchSpace, ProgrammaticSpace, LatentSpace, LatentSpace2
+from prog_policies.search_methods import HillClimbing
 
-def evaluate_program(program: dsl_nodes.Program, task_envs: list[BaseTask]) -> float:
-    sum_reward = 0.
-    for task_env in task_envs:
-        sum_reward += task_env.evaluate_program(program)
-    return sum_reward / len(task_envs)
-
-def stochastic_hill_climbing(search_space: BaseSearchSpace, task_envs: list[BaseTask],
-                             seed = None, n_iterations: int = 10000, k: int = 5) -> list[float]:
-    rewards = []
-    search_space.set_seed(seed)
-    best_ind, best_prog = search_space.initialize_individual()
-    best_reward = evaluate_program(best_prog, task_envs)
-    rewards.append(best_reward)
-    for _ in range(n_iterations):
-        candidates = search_space.get_neighbors(best_ind, k=k)
-        in_local_maximum = True
-        for ind, prog in candidates:
-            reward = evaluate_program(prog, task_envs)
-            if reward > best_reward:
-                best_ind = ind
-                best_prog = prog
-                best_reward = reward
-                in_local_maximum = False
-                break
-        if in_local_maximum: break
-        rewards.append(best_reward)
-    return rewards
 
 if __name__ == '__main__':
     
@@ -79,6 +52,8 @@ if __name__ == '__main__':
         "max_calls": 10000
     }
     
+    search_method = HillClimbing(args.k)
+    
     if args.task == "CleanHouse":
         env_args["env_height"] = 14
         env_args["env_width"] = 22
@@ -91,7 +66,7 @@ if __name__ == '__main__':
     with open(fname, 'w') as f:
         f.write('')
     def f(seed):
-        r = stochastic_hill_climbing(search_spaces[args.space], task_envs, seed, n_search_iterations, args.k)
+        r = search_method.search(search_spaces[args.space], task_envs, seed, n_search_iterations)
         with open(fname, 'a') as f:
             f.write(','.join([str(reward) for reward in r]) + '\n')
         return r
