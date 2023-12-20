@@ -1,0 +1,17 @@
+{
+    "search_method_cls_name": "StochasticHillClimbing2",
+    "search_method_args": {
+        "env_args": {
+            "max_calls": 10000
+        },
+        "exp_name": "search_debug",
+        "search_method_args": {
+            "k": 250
+        },
+        "max_evaluations": 1e7,
+        "number_executions": 16,
+        "checkpoint_frequency": 1000,
+        "task_cls_name": "Harvester",
+        "n_proc": 1
+    }
+}

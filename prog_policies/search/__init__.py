@@ -2,6 +2,7 @@ from __future__ import annotations
 from .base_search import BaseSearch
 from .latent_cem import LatentCEM
 from .latent_cem_leaps import LatentCEM_LEAPS
+from .latent_cem_leaps_prog_init import LatentCEM_LEAPS_ProgInit
 from .latent_cem_leaps2 import LatentCEM_LEAPS2
 from .disentangled_latent_cem import DisentangledLatentCEM
 from .simulated_annealing import SimulatedAnnealing
@@ -18,6 +19,7 @@ from .random_programmatic import RandomProgrammatic
 from .shc_leaps import StochasticHillClimbing2_LEAPS
 from .stochastic_hill_climbing import StochasticHillClimbing
 from .stochastic_hill_climbing2 import StochasticHillClimbing2
+from .stochastic_hill_climbing2_cem_init import StochasticHillClimbing2_CEMInit
 from .stochastic_hill_climbing_credit_assignment import StochasticHillClimbingWithCreditAssignment
 from .stochastic_hill_climbing_with_simplification import StochasticHillClimbingWithSimplification
 

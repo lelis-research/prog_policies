@@ -1,0 +1,27 @@
+{
+    "search_method_cls_name": "StochasticHillClimbing2_CEMInit",
+    "search_method_args": {
+        "env_args": {
+            "max_calls": 10000
+        },
+        "exp_name": "search_debug",
+        "search_method_args": {
+            "population_size": 256,
+            "elitism_rate": 0.1,
+            "restart_timeout": 5,
+            "initial_sigma": 0.2,
+            "reduce_to_mean": false,
+            "k": 250
+        },
+        "latent_model_cls_name": "ProgramVAE",
+        "latent_model_args": {
+            "seed": 1
+        },
+        "latent_model_params_path": "leaps/weights/LEAPS/best_valid_params.ptp",
+        "max_evaluations": 1e7,
+        "number_executions": 16,
+        "checkpoint_frequency": 1000,
+        "task_cls_name": "Harvester",
+        "n_proc": 4
+    }
+}
