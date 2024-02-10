@@ -1,6 +1,5 @@
 from __future__ import annotations
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
-import os
 import sys
 from multiprocessing import Pool
 
@@ -8,7 +7,7 @@ sys.path.append('.')
 
 from prog_policies.karel import KarelDSL
 from prog_policies.karel_tasks import get_task_cls
-from prog_policies.search_space import BaseSearchSpace, ProgrammaticSpace, LatentSpace, LatentSpace2
+from prog_policies.search_space import ProgrammaticSpace, LatentSpace
 from prog_policies.search_methods import HillClimbing
 
 
@@ -40,8 +39,7 @@ if __name__ == '__main__':
     
     search_spaces = {
         'programmatic': ProgrammaticSpace(dsl, sigma),
-        'latent': LatentSpace(dsl, sigma),
-        'latent2': LatentSpace2(dsl, sigma)
+        'latent': LatentSpace(dsl, sigma)
     }
     
     env_args = {

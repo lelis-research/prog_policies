@@ -56,19 +56,6 @@ if __name__ == '__main__':
             
             seen_programs.add(program_str)
             
-            # max_len = max([a.size for a in a_h])
-            
-            # a_h_np = np.ones((num_demos, max_len+1), dtype=int) * (prog_generator.a2i[None])
-            # s_h_np = np.zeros((num_demos, max_len+1, *s_h[0].shape[1:]), dtype=bool)
-            # bf_h_np = np.zeros((num_demos, max_len+1, *bf_h[0].shape[1:]), dtype=bool)
-            
-            # for i in range(num_demos):
-            #     a_h_np[i, 1:len(a_h[i])+1] = a_h[i]
-            #     s_h_np[i, :len(a_h[i])+1] = s_h[i]
-            #     s_h_np[i, len(a_h[i])+1:] = s_h[i][-1]
-            #     bf_h_np[i, :len(a_h[i])+1] = bf_h[i]
-            #     bf_h_np[i, len(a_h[i])+1:] = bf_h[i][-1]
-            
             programs_only_dataset.append(program_str)
             full_programs_dataset.append((program_str, (s_h, bf_h, a_h)))
             
