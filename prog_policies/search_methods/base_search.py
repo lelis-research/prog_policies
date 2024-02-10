@@ -13,7 +13,7 @@ class BaseSearch(ABC):
     
     @abstractmethod
     def search(self, search_space: BaseSearchSpace, task_envs: list[BaseTask],
-               seed = None, n_iterations: int = 10000) -> list[float]:
+               seed = None, n_iterations: int = 10000) -> tuple[list[dsl_nodes.Program], list[float]]:
         """Main method for searching in a given search space
 
         Args:
@@ -23,6 +23,7 @@ class BaseSearch(ABC):
             n_iterations (int, optional): Maximum number of iterations. Defaults to 10000.
 
         Returns:
+            list[dsl_nodes.Program]: List of programs obtained at each iteration
             list[float]: List of rewards obtained at each iteration
         """
         pass

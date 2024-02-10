@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 
 from ..search_space import LatentSpace
-from ..base import BaseTask
+from ..base import dsl_nodes, BaseTask
 
 from .base_search import BaseSearch
 
@@ -11,12 +11,14 @@ from .base_search import BaseSearch
 class CEM(BaseSearch):
     
     def search(self, search_space: LatentSpace, task_envs: list[BaseTask],
-               seed = None, n_iterations: int = 10000) -> list[float]:
+               seed: int | None = None, n_iterations: int = 10000) -> tuple[list[dsl_nodes.Program], list[float]]:
         rewards = []
-        search_space.set_seed(seed)
+        if seed:
+            search_space.set_seed(seed)
         best_ind, best_prog = search_space.initialize_individual()
         best_reward = self.evaluate_program(best_prog, task_envs)
         rewards.append(best_reward)
+        progs = [best_prog]
         best_elite_mean = -float('inf')
 
         candidates = search_space.get_neighbors(best_ind, k=self.k)        
@@ -28,7 +30,7 @@ class CEM(BaseSearch):
                 candidate_rewards.append(reward)
                 if reward > best_reward:
                     best_reward = reward
-            rewards.append(best_reward)
+                    best_prog = prog
             
             torch_candidates = torch.stack([ind for ind, _ in candidates])
             torch_rewards = torch.tensor(candidate_rewards, device=torch_candidates.device)
@@ -46,4 +48,7 @@ class CEM(BaseSearch):
             mean_elite = torch.mean(elite_candidates, dim=0)
             candidates = search_space.get_neighbors(mean_elite, k=self.k)
             
-        return rewards
+            rewards.append(best_reward)
+            progs.append(best_prog)
+            
+        return progs, rewards
