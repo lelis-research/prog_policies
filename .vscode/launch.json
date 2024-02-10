@@ -1,0 +1,71 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Plot Results LB",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/plot_results.py",
+            "args": ["--experiment", "exp_cebs_init"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "CEM LatentSpace",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/run_search_new.py",
+            "args": ["--search_space", "LatentSpace", "--search_method", "CEM"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "CEBS LatentSpace",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/run_search_new.py",
+            "args": ["--search_space", "LatentSpace", "--search_method", "CEBS"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "CEM GroundTruth",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/search_cem_ground_truth.py",
+            "args": ["DoorKey"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "SHC ProgSpace",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/run_search.py",
+            "args": ["--search_args_path", "sample_args/search/shc.json"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "SHC_CEMInit",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/run_search.py",
+            "args": ["--search_args_path", "sample_args/search/shc_cem_init.json"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "CEM_ProgInit",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/run_search.py",
+            "args": ["--search_args_path", "sample_args/search/latent_cem_leaps_prog_init.json"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+    ]
+}
