@@ -1,32 +1,32 @@
 from __future__ import annotations
-from functools import partial
+import copy
 
 import torch
+import numpy as np
 
-from prog_policies.base import BaseEnvironment
+from prog_policies.base import dsl_nodes, BaseEnvironment
 
-from hprl.pretrain.models_option_new_vae import ProgramVAE
-from hprl.rl.envs import make_vec_envs
-from hprl.karel_env.dsl import get_DSL_option_v2 as get_DSL
-from hprl.pretrain.customargparse import CustomArgumentParser, args_to_dict
-from hprl.fetch_mapping import fetch_mapping
+from .stochastic_hill_climbing2 import StochasticHillClimbing2
 
-from .latent_cem import LatentCEM
+from leaps.pretrain.models import ProgramVAE
+from leaps.rl.envs import make_vec_envs
+from leaps.karel_env.dsl import get_DSL
+from leaps.pretrain.customargparse import CustomArgumentParser, args_to_dict
+from leaps.fetch_mapping import fetch_mapping
 
-class LatentCEM_HPRL(LatentCEM):
+class StochasticHillClimbing2_CEMInit(StochasticHillClimbing2):
     
     def load_latent_model(self, latent_model_cls_name: str, latent_model_args: dict, latent_model_params_path: str,
                           env_cls: type[BaseEnvironment] = None, env_args: dict = None):
+        torch.set_num_threads(1)
         parser = CustomArgumentParser()
         parser.add_argument('-c', '--configfile')
-        parser.set_defaults(configfile='hprl/pretrain/cfg_option_new_vae.py')
+        parser.set_defaults(configfile='leaps/pretrain/cfg.py')
         args, _ = parser.parse_known_args()
-        _, _, args.dsl_tokens, _ = fetch_mapping('hprl/mapping_karel2prl_new_vae_v2.txt')
-        # -d datasets_options_L30_1m_cover_branch/karel_dataset_option_L30_1m_cover_branch --verbose --train.batch_size 256 --num_lstm_cell_units 64 --net.num_rnn_encoder_units 256 --net.num_rnn_decoder_units 256 --loss.latent_loss_coef 0.1 --net.use_linear True --net.tanh_after_sample True --device cuda:0 --mdp_type ProgramEnv1_new_vae_v2 --optimizer.params.lr 1e-3 --net.latent_mean_pooling False --prefix LEAPSL_tanh_epoch30_L40_1m_h64_u256_option_latent_p1_gru_linear_cuda8 --max_program_len 40 --dsl.max_program_len 40 --input_channel 8 --train.max_epoch 30
+        _, _, args.dsl_tokens, _ = fetch_mapping('leaps/mapping_karel2prl.txt')
         args.use_simplified_dsl = False
         args.device = 'cpu'
-        args.num_lstm_cell_units = 64
-        args.mdp_type = "ProgramEnv1_new_vae_v2"
+        args.num_lstm_cell_units = 256
         config = args_to_dict(args)
         args.task_file = config['rl']['envs']['executable']['task_file']
         args.grammar = config['dsl']['grammar']
@@ -51,4 +51,10 @@ class LatentCEM_HPRL(LatentCEM):
         progs_len = progs_len.numpy().tolist()
         progs_str = [self.leaps_dsl.intseq2str([0] + prog[:prog_len[0]]) for prog, prog_len in zip(progs, progs_len)]
         return progs_str
-        
+    
+    def random_program(self) -> dsl_nodes.Program:
+        latent = torch.randn(1, self.hidden_size, generator=self.torch_rng, device=self.torch_device)
+        program_str = self.decode_population(latent)[0]
+        program = self.dsl.parse_str_to_node(program_str)
+        return program
+    

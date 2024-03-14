@@ -23,9 +23,6 @@ if __name__ == '__main__':
         'latent_010',
         'latent_025',
         'latent_050',
-        # 'latent2_010',
-        # 'latent2_025',
-        # 'latent2_050',
     ]
     
     legends = [
@@ -33,9 +30,6 @@ if __name__ == '__main__':
         'Latent, $\sigma=0.1$',
         'Latent, $\sigma=0.25$',
         'Latent, $\sigma=0.5$',
-        # 'Latent new $N$, $\sigma=0.1$',
-        # 'Latent new $N$, $\sigma=0.25$',
-        # 'Latent new $N$, $\sigma=0.5$',
     ]
     
     styles = [
@@ -91,7 +85,7 @@ if __name__ == '__main__':
     
     ax[1].legend(loc='center left', bbox_to_anchor=(1, 0.5), edgecolor='black')
     fig.tight_layout(pad=0.75)
-    fig.savefig('output/smoothness.png')
+    fig.savefig('output/smoothness.png', dpi=600, transparent=True)
     fig.savefig('output/smoothness.pgf')
     fig.savefig('output/smoothness.pdf')
     

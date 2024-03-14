@@ -1,5 +1,6 @@
 from __future__ import annotations
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+import os
 import sys
 from multiprocessing import Pool
 
@@ -8,7 +9,7 @@ sys.path.append('.')
 from prog_policies.karel import KarelDSL
 from prog_policies.karel_tasks import get_task_cls
 from prog_policies.search_space import ProgrammaticSpace, LatentSpace
-from prog_policies.search_methods import HillClimbing
+from prog_policies.search_methods import HillClimbing, CEM, CEBS
 
 
 if __name__ == '__main__':
@@ -20,9 +21,11 @@ if __name__ == '__main__':
     
     parser.add_argument('task', help='Name of the task class')
     parser.add_argument('k', type=int, help='Number of neighbors to consider')
+    parser.add_argument('e', type=int, help='Number of elite candidates in CEM-based methods')
     parser.add_argument('space', help='Search space to use')
     parser.add_argument('seed_lb', type=int, help='Lower bound for seed')
     parser.add_argument('seed_ub', type=int, help='Upper bound for seed')
+    parser.add_argument('method', help='Search method to use')
     
     args = parser.parse_args()
 
@@ -50,13 +53,19 @@ if __name__ == '__main__':
         "max_calls": 10000
     }
     
-    search_method = HillClimbing(args.k)
+    search_methods = {
+        'hc': HillClimbing(args.k),
+        'cem': CEM(args.k, args.e),
+        'cebs': CEBS(args.k, args.e)
+    }
+    
+    search_method = search_methods[args.method]
     
     if args.task == "CleanHouse":
         env_args["env_height"] = 14
         env_args["env_width"] = 22
     
-    fname = f'output/rewards_{args.space}_k{args.k}_{args.task}_seeds{args.seed_lb}-{args.seed_ub}.csv'
+    fname = f'output/{args.method}_rewards_{args.space}_k{args.k}_{args.task}_seeds{args.seed_lb}-{args.seed_ub}.csv'
 
     task_cls = get_task_cls(args.task)
     task_envs = [task_cls(env_args, i) for i in range(n_env)]

@@ -13,7 +13,8 @@ from .base_space import BaseSearchSpace
 class LatentSpace(BaseSearchSpace):
     
     def __init__(self, dsl: BaseDSL, sigma: float = 0.25) -> None:
-        super().__init__(dsl)
+        super().__init__(dsl, sigma)
+        # Procedure to load LEAPS model using the authors' provided config
         torch.set_num_threads(1)
         parser = CustomArgumentParser()
         parser.add_argument('-c', '--configfile')
@@ -41,35 +42,65 @@ class LatentSpace(BaseSearchSpace):
         params = torch.load('leaps/weights/LEAPS/best_valid_params.ptp', map_location=self.torch_device)
         self.latent_model.load_state_dict(params[0], strict=False)
         self.hidden_size = self.latent_model.recurrent_hidden_state_size
-        self.sigma = sigma
     
-    def decode_individual(self, individual: torch.Tensor) -> dsl_nodes.Program:
+    def _decode(self, individual: torch.Tensor) -> dsl_nodes.Program:
+        """Decodes a single latent vector into a program using LEAPS
+
+        Args:
+            individual (torch.Tensor): latent vector
+
+        Returns:
+            dsl_nodes.Program: decoded program
+        """
         population = individual.unsqueeze(0)
-        _, progs, progs_len, _, _, _, _, _, _ = self.latent_model.vae.decoder(None, population, teacher_enforcing=False, deterministic=True, evaluate=False)
+        _, progs, progs_len, _, _, _, _, _, _ = self.latent_model.vae.decoder(
+            None, population, teacher_enforcing=False, deterministic=True, evaluate=False
+        )
         prog = progs.numpy().tolist()[0]
         prog_len = progs_len.numpy().tolist()[0][0]
+        # Model outputs tokens starting from index 1
         prog_str = self.leaps_dsl.intseq2str([0] + prog[:prog_len])
         prog = self.dsl.parse_str_to_node(prog_str)
         return prog
     
     def initialize_individual(self) -> tuple[torch.Tensor, dsl_nodes.Program]:
+        """Initializes a tuple of latent vector and associated program from a normal distribution
+
+        Returns:
+            tuple[torch.Tensor, dsl_nodes.Program]: latent vector and associated program
+        """
         while True:
             try:
                 latent = torch.randn(self.hidden_size, generator=self.torch_rng, device=self.torch_device)
-                prog = self.decode_individual(latent) # Check if it's a valid program
+                prog = self._decode(latent) # Check if it's a valid program
                 break
             except (AssertionError, IndexError): # In case of invalid program, try again
                 continue
         return latent, prog
     
     def get_neighbors(self, individual: torch.Tensor, k: int = 1) -> list[tuple[torch.Tensor, dsl_nodes.Program]]:
+        """Returns k neighbors of a given latent vector
+
+        Args:
+            individual (torch.Tensor): Latent vector
+            k (int, optional): Number of neighbors. Defaults to 1.
+
+        Raises:
+            Exception: If no valid neighbor is found after 50 tries
+
+        Returns:
+            list[tuple[torch.Tensor, dsl_nodes.Program]]: List of individuals as tuples of
+            latent vector and associated program
+        """
         neighbors = []
         for _ in range(k):
             n_tries = 0
             while n_tries < 50:
                 try:
-                    neighbor = individual + self.sigma * torch.randn(self.hidden_size, generator=self.torch_rng, device=self.torch_device)
-                    prog = self.decode_individual(neighbor) # Check if it's a valid program
+                    neighbor = individual + self.sigma * torch.randn(
+                        self.hidden_size, generator=self.torch_rng, device=self.torch_device
+                    )
+                    prog = self._decode(neighbor) # Check if it's a valid program
                     break
                 except (AssertionError, IndexError): # In case of invalid program, try again
                     n_tries += 1
