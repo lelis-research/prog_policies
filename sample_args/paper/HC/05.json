@@ -1,0 +1,21 @@
+{
+    "search_method_cls_name": "StochasticHillClimbing2",
+    "search_method_args": {
+        "env_args": {
+            "env_height": 12,
+            "env_width": 12,
+            "crashable": false,
+            "leaps_behaviour": true
+        },
+        "exp_name": "exp_reproduce_results",
+        "search_method_args": {
+            "k": 250
+        },
+        "max_evaluations": 10000000.0,
+        "number_executions": 16,
+        "checkpoint_frequency": 1000,
+        "n_proc": 1,
+        "task_cls_name": "FourCorners",
+        "search_seed": 1
+    }
+}

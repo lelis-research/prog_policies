@@ -1,0 +1,30 @@
+{
+    "search_method_cls_name": "LatentCEM_LEAPS",
+    "search_method_args": {
+        "exp_name": "exp_reproduce_results",
+        "env_args": {
+            "env_height": 8,
+            "env_width": 8,
+            "crashable": false,
+            "leaps_behaviour": true
+        },
+        "search_method_args": {
+            "population_size": 64,
+            "elitism_rate": 0.25,
+            "restart_timeout": 5,
+            "initial_sigma": 0.5,
+            "reduce_to_mean": false
+        },
+        "latent_model_cls_name": "ProgramVAE",
+        "latent_model_args": {
+            "seed": 1
+        },
+        "latent_model_params_path": "leaps/weights/LEAPS/best_valid_params.ptp",
+        "max_evaluations": 10000000.0,
+        "number_executions": 16,
+        "checkpoint_frequency": 100,
+        "n_proc": 4,
+        "task_cls_name": "Harvester",
+        "search_seed": 1
+    }
+}
